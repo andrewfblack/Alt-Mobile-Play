@@ -239,7 +239,7 @@ struct NavigationView: View {
     private var mapControls: some View {
         VStack(spacing: 14) {
             Button {
-                if case .region(let r) = position { zoom(to: r.center) }
+                if let r = position.region { zoom(to: r.center) }
                 else if let loc = nav.target?.coordinate { zoom(to: loc) }
             } label: {
                 controlIcon("location.fill")
@@ -309,7 +309,7 @@ struct NavigationView: View {
     }
 
     private func zoom(by factor: Double) {
-        if case .region(let r) = position {
+        if let r = position.region {
             position = .region(MKCoordinateRegion(
                 center: r.center,
                 span: MKCoordinateSpan(

@@ -25,7 +25,8 @@ struct HomeScreenView: View {
 
                 // Right: app grid
                 AppsGrid()
-                    .frame(width: 380, maxHeight: .infinity, alignment: .topTrailing)
+                    .frame(width: 380)
+                    .frame(maxHeight: .infinity, alignment: .topTrailing)
             }
             .padding(.horizontal, 24)
             .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -1,4 +1,5 @@
 import Contacts
+import ContactsUI
 import Observation
 
 struct ContactRow: Identifiable {

@@ -161,7 +161,6 @@ private struct SystemVolumeView: UIViewRepresentable {
         let view = MPVolumeView(frame: .zero)
         view.tintColor = UIColor(CarTheme.accent)
         view.showsVolumeSlider = true
-        view.showsRouteButton = false
         return view
     }
     func updateUIView(_ uiView: MPVolumeView, context: Context) {}

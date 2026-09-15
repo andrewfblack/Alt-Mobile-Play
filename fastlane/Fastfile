@@ -28,8 +28,6 @@ platform :ios do
       is_key_content_base64: true
     )
 
-    sh(command: "xcodegen generate", log: false)
-
     match(
       type: "appstore",
       app_identifier: [ENV["APP_ID"]],

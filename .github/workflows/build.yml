@@ -65,6 +65,9 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      - name: Disable Git Credential Manager (match uses Authorization header)
+        run: git config --global credential.helper ""
+
       - name: Run fastlane push_to_testflight
         run: bundle exec fastlane push_to_testflight
         env:

@@ -62,7 +62,7 @@ jobs:
       - name: Install fastlane dependencies
         run: bundle install
 
-      - name: Run fastlane testflight
-        run: bundle exec fastlane testflight
+      - name: Run fastlane push_to_testflight
+        run: bundle exec fastlane push_to_testflight
         env:
           MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}

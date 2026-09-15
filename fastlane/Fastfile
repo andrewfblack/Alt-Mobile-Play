@@ -21,6 +21,8 @@ platform :ios do
       UI.user_error!("Missing secret: #{key}. Add it in GitHub repo Settings → Secrets and variables → Actions.") if ENV[key].nil? || ENV[key].strip.empty?
     end
 
+    basic_auth = ENV["MATCH_GIT_BASIC_AUTHORIZATION"].to_s.gsub(/\s+/, "")
+
     api_key = app_store_connect_api_key(
       key_id: ENV["APPLE_KEY_ID"],
       issuer_id: ENV["APPLE_ISSUER_ID"],
@@ -34,7 +36,8 @@ platform :ios do
       git_url: ENV["MATCH_REPOSITORY"],
       api_key: api_key,
       readonly: false,
-      force: false
+      force: false,
+      git_basic_authorization: basic_auth.empty? ? nil : basic_auth
     )
 
     begin

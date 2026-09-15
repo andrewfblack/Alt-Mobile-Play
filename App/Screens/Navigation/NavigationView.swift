@@ -4,17 +4,12 @@ import MapKit
 struct NavigationView: View {
     @Environment(AppRouter.self) private var router
     @State private var nav = NavigationState.shared
-    @State private var position: MapCameraPosition = .userLocation(fallback: defaultRegion)
+    @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var searchText = ""
     @State private var results: [MKMapItem] = []
     @State private var showResults = false
     @State private var mapType: CarMapType = .standard
     @FocusState private var searchFocused: Bool
-
-    private static let defaultRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-        span: MKCoordinateSpan(latitudeDelta: 0.25, longitudeDelta: 0.25)
-    )
 
     var body: some View {
         ZStack(alignment: .topLeading) {

@@ -3,7 +3,6 @@ import CoreLocation
 import AVFoundation
 import Observation
 
-@MainActor
 final class NavigationTarget: Identifiable {
     let id = UUID()
     let mapItem: MKMapItem
@@ -19,7 +18,6 @@ final class NavigationTarget: Identifiable {
     }
 }
 
-@MainActor
 @Observable
 final class NavigationState: NSObject, CLLocationManagerDelegate {
     static let shared = NavigationState()
@@ -126,11 +124,11 @@ final class NavigationState: NSObject, CLLocationManagerDelegate {
 
     // MARK: - CLLocationManagerDelegate
 
-    nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in updateAuthStatus() }
     }
 
-    nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         Task { @MainActor in
             guard isNavigating, let route, let loc = locations.last,
                   currentStep < route.steps.count else { return }

@@ -1,0 +1,34 @@
+# Xcode
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.moved-aside
+*.hmap
+*.xccheckout
+*.xcscmblueprint
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+fastlane/.env
+fastlane/Matchfile
+fastlane/Appfile
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+# Bundler
+vendor/bundle
+Gemfile.lock
+
+# IDE
+.vscode/
+.idea/

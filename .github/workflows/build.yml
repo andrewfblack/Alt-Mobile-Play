@@ -1,0 +1,68 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      upload_testflight:
+        description: "Build for device and upload to TestFlight"
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  validate:
+    name: Build for Simulator (validation)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build for iOS Simulator
+        run: |
+          xcodebuild \
+            -project AltMobilePlay.xcodeproj \
+            -scheme AltPlay \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+  testflight:
+    name: Upload to TestFlight
+    if: github.event_name == 'workflow_dispatch' && inputs.upload_testflight == true
+    runs-on: macos-14
+    needs: validate
+    env:
+      APP_ID: ${{ secrets.APP_ID }}
+      TEAM_ID: ${{ secrets.TEAM_ID }}
+      APPLE_KEY_ID: ${{ secrets.APPLE_KEY_ID }}
+      APPLE_ISSUER_ID: ${{ secrets.APPLE_ISSUER_ID }}
+      APPLE_KEY_CONTENT: ${{ secrets.APPLE_KEY_CONTENT }}
+      MATCH_REPOSITORY: ${{ secrets.MATCH_REPOSITORY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Install fastlane dependencies
+        run: bundle install
+
+      - name: Run fastlane testflight
+        run: bundle exec fastlane testflight
+        env:
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}

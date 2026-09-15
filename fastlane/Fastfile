@@ -17,7 +17,7 @@ platform :ios do
 
   desc "Build signed IPA and upload to TestFlight (requires secrets)"
   lane :push_to_testflight do
-    %w[APP_ID TEAM_ID APPLE_KEY_ID APPLE_ISSUER_ID APPLE_KEY_CONTENT MATCH_REPOSITORY].each do |key|
+    %w[APP_ID TEAM_ID APPLE_KEY_ID APPLE_ISSUER_ID APPLE_KEY_CONTENT MATCH_REPOSITORY MATCH_PASSWORD].each do |key|
       UI.user_error!("Missing secret: #{key}. Add it in GitHub repo Settings → Secrets and variables → Actions.") if ENV[key].nil? || ENV[key].strip.empty?
     end
 

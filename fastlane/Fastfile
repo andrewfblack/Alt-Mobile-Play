@@ -49,6 +49,7 @@ platform :ios do
 
     gym(
       scheme: "AltPlay",
+      configuration: "Release",
       export_method: "app-store",
       output_directory: "build",
       output_name: "AltPlay",

@@ -24,6 +24,15 @@
   <string>$(CURRENT_PROJECT_VERSION)</string>
   <key>LSRequiresIPhoneOS</key>
   <true/>
+  <key>LSApplicationQueriesSchemes</key>
+  <array>
+    <string>audible</string>
+    <string>spotify</string>
+    <string>podcasts</string>
+    <string>musics</string>
+    <string>youtubemusic</string>
+    <string>overcast</string>
+  </array>
   <key>UIApplicationSceneManifest</key>
   <dict>
     <key>UIApplicationSupportsMultipleScenes</key>

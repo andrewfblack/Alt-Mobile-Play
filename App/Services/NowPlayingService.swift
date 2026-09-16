@@ -14,9 +14,10 @@ final class NowPlayingService {
     var albums: [MPMediaItemCollection] = []
     var playlists: [MPMediaPlaylist] = []
 
-    var hasContent: Bool { nowItem != nil }
+    var hasContent: Bool { nowItem != nil || isPlaying }
+    var isExternalNowPlaying: Bool { isPlaying && nowItem == nil }
     var artwork: UIImage? { nowItem?.artwork?.image(at: CGSize(width: 300, height: 300)) }
-    var title: String { nowItem?.title ?? "Not Playing" }
+    var title: String { nowItem?.title ?? (isPlaying ? "Now Playing" : "Not Playing") }
     var artist: String { nowItem?.artist ?? "" }
     var album: String { nowItem?.albumTitle ?? "" }
 
@@ -85,7 +86,6 @@ final class NowPlayingService {
     }
 
     func playPause() {
-        guard hasContent else { return }
         isPlaying ? player.pause() : player.play()
     }
 

@@ -70,6 +70,34 @@ struct MusicView: View {
                         .frame(width: artworkSize, height: artworkSize)
                     VStack(alignment: .leading, spacing: 24) {
                         trackInfo
+                        if music.isExternalNowPlaying {
+                            Text("Controlling the audio app that is currently playing. Open the app to pick something different, or choose from Songs, Albums, or Playlists below to play your own library.")
+                                .font(CarTheme.rounded(15))
+                                .foregroundStyle(CarTheme.secondaryText)
+                            let apps = ExternalAudioApps.installed
+                            if !apps.isEmpty {
+                                ScrollView(.horizontal, showsIndicators: false) {
+                                    HStack(spacing: 14) {
+                                        ForEach(apps) { app in
+                                            Button { ExternalAudioApps.open(app) } label: {
+                                                HStack(spacing: 10) {
+                                                    Image(systemName: app.icon)
+                                                        .font(.system(size: 16, weight: .semibold))
+                                                    Text(app.name)
+                                                        .font(CarTheme.rounded(16, .semibold))
+                                                }
+                                                .foregroundStyle(CarTheme.primaryText)
+                                                .padding(.horizontal, 16)
+                                                .padding(.vertical, 10)
+                                                .background(CarTheme.accent.opacity(0.15))
+                                                .clipShape(Capsule())
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         transportControls
                         progressBar
                         volumeBar
@@ -170,7 +198,10 @@ struct MusicView: View {
         ScrollView {
             LazyVStack(spacing: 0) {
                 ForEach(music.songs, id: \.persistentID) { item in
-                    Button { music.play(item) } label: {
+                    Button {
+                        music.play(item)
+                        section = .nowPlaying
+                    } label: {
                         HStack(spacing: 16) {
                             Image(systemName: "music.note")
                                 .font(.system(size: 18, weight: .semibold))
@@ -220,7 +251,10 @@ struct MusicView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 16)], spacing: 16) {
                 ForEach(music.albums, id: \.persistentID) { album in
                     let item = album.representativeItem
-                    Button { music.play(album: album) } label: {
+                    Button {
+                        music.play(album: album)
+                        section = .nowPlaying
+                    } label: {
                         VStack(spacing: 10) {
                             artworkTile(item?.artwork)
                                 .aspectRatio(1, contentMode: .fill)
@@ -246,7 +280,10 @@ struct MusicView: View {
             LazyVStack(spacing: 0) {
                 ForEach(music.playlists, id: \.persistentID) { playlist in
                     let item = playlist.representativeItem
-                    Button { music.play(playlist: playlist) } label: {
+                    Button {
+                        music.play(playlist: playlist)
+                        section = .nowPlaying
+                    } label: {
                         HStack(spacing: 16) {
                             artworkTile(item?.artwork)
                                 .frame(width: 64, height: 64)

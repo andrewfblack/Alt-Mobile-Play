@@ -15,7 +15,7 @@ on:
 jobs:
   validate:
     name: Build for Simulator (validation)
-    runs-on: macos-14
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
@@ -39,7 +39,7 @@ jobs:
   testflight:
     name: Upload to TestFlight
     if: github.event_name == 'workflow_dispatch' && inputs.upload_testflight == true
-    runs-on: macos-14
+    runs-on: macos-26
     timeout-minutes: 30
     needs: validate
     env:

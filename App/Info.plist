@@ -6,6 +6,8 @@
   <string>en</string>
   <key>CFBundleDisplayName</key>
   <string>AltPlay</string>
+  <key>CFBundleIconName</key>
+  <string>$(ASSETCATALOG_COMPILER_APPICON_NAME)</string>
   <key>CFBundleExecutable</key>
   <string>$(EXECUTABLE_NAME)</string>
   <key>CFBundleIdentifier</key>

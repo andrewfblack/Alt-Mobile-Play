@@ -56,8 +56,8 @@ final class NowPlayingService {
         songs = (MPMediaQuery.songs().items ?? []).sorted {
             ($0.title ?? "").caseInsensitiveCompare($1.title ?? "") == .orderedAscending
         }
-        albums = MPMediaQuery.albums().collections ?? []
-        playlists = MPMediaQuery.playlists().collections ?? []
+        albums = MPMediaQuery.albums().collections ?? [MPMediaItemCollection]()
+        playlists = MPMediaQuery.playlists().collections ?? [MPMediaPlaylist]()
         player.setQueue(with: MPMediaQuery.songs())
     }
 

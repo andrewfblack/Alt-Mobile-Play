@@ -23,6 +23,10 @@ platform :ios do
 
     basic_auth = ENV["MATCH_GIT_BASIC_AUTHORIZATION"].to_s.gsub(/\s+/, "")
 
+    # Give match an unlocked temporary keychain with a known password so it
+    # can grant codesign access without an interactive macOS permission prompt.
+    setup_ci(timeout: 3600) if ENV["CI"] == "true"
+
     api_key = app_store_connect_api_key(
       key_id: ENV["APPLE_KEY_ID"],
       issuer_id: ENV["APPLE_ISSUER_ID"],

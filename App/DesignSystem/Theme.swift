@@ -15,6 +15,8 @@ enum CarTheme {
     static let secondaryText = Color.white.opacity(0.6)
     static let tertiaryText = Color.white.opacity(0.38)
 
+    static let palette: [Color] = [accent, red, green, purple, orange, secondaryText]
+
     static func rounded(_ size: CGFloat, _ weight: Font.Weight = .bold) -> Font {
         .system(size: size, weight: weight, design: .rounded)
     }

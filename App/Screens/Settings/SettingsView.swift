@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppRouter.self) private var router
     @Bindable private var settings = AppSettings.shared
+    @State private var showAppManager = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -12,6 +13,33 @@ struct SettingsView: View {
 
             ScrollView {
                 VStack(spacing: 12) {
+                    section("Home Screen") {
+                        Button {
+                            showAppManager = true
+                        } label: {
+                            HStack(spacing: 14) {
+                                Image(systemName: "square.grid.2x2.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(CarTheme.accent)
+                                    .frame(width: 40, height: 40)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Home Apps")
+                                        .font(CarTheme.rounded(18, .semibold))
+                                        .foregroundStyle(CarTheme.primaryText)
+                                    Text("Add, hide, or remove apps on the home screen")
+                                        .font(CarTheme.rounded(14))
+                                        .foregroundStyle(CarTheme.secondaryText)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(CarTheme.tertiaryText)
+                            }
+                            .padding(14)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
                     section("Display") {
                         SettingToggle(
                             icon: "sun.max.fill",
@@ -86,6 +114,9 @@ struct SettingsView: View {
             .onAppear {
                 settings.voiceGuidance = NavigationState.shared.voiceEnabled
             }
+        }
+        .sheet(isPresented: $showAppManager) {
+            HomeAppsManagerView()
         }
     }
 

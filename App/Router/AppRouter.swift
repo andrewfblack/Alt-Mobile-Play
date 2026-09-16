@@ -1,7 +1,7 @@
 import SwiftUI
 import Observation
 
-enum AppScreen: Hashable {
+enum AppScreen: String, Hashable {
     case home
     case navigation
     case music

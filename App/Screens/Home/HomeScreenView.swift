@@ -16,7 +16,9 @@ struct HomeScreenView: View {
                 .padding(.bottom, 18)
 
             GeometryReader { geo in
-                let gridWidth = max(200, min(380, geo.size.width * 0.44))
+                let widthBudget = geo.size.width * 0.44
+                let heightBudget = (2 * geo.size.height - 14) / 3 - 6
+                let gridWidth = max(200, min(380, min(widthBudget, heightBudget)))
                 HStack(alignment: .top, spacing: 20) {
                     // Left: widgets
                     VStack(spacing: 16) {
@@ -92,20 +94,57 @@ private struct BatteryIndicator: View {
 
 private struct AppsGrid: View {
     @Environment(AppRouter.self) private var router
+    @State private var settings = AppSettings.shared
+    @State private var page = 0
 
-    private let apps: [(title: String, icon: String, color: Color, screen: AppScreen)] = [
-        ("Navigation", "map.fill",          CarTheme.accent,  .navigation),
-        ("Music",      "music.note",        CarTheme.red,     .music),
-        ("Phone",      "phone.fill",        CarTheme.green,   .phone),
-        ("Messages",   "message.fill",      CarTheme.green,   .messages),
-        ("Podcasts",   "mic.fill",          CarTheme.purple,  .podcasts),
-        ("Settings",   "gearshape.fill",    CarTheme.secondaryText, .settings),
-    ]
+    private let perPage = 6
+
+    private var pages: [[HomeApp]] {
+        let apps = settings.homeApps
+        guard !apps.isEmpty else { return [[]] }
+        return stride(from: 0, to: apps.count, by: perPage).map {
+            Array(apps[$0 ..< min($0 + perPage, apps.count)])
+        }
+    }
 
     var body: some View {
+        VStack(spacing: 10) {
+            ZStack {
+                TabView(selection: $page) {
+                    ForEach(pages.indices, id: \.self) { index in
+                        grid(pages[index]).tag(index)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+
+                if pages.count > 1 {
+                    HStack {
+                        pageArrow("chevron.left", enabled: page > 0) { page -= 1 }
+                        Spacer()
+                        pageArrow("chevron.right", enabled: page < pages.count - 1) { page += 1 }
+                    }
+                }
+            }
+
+            if pages.count > 1 {
+                HStack(spacing: 6) {
+                    ForEach(pages.indices, id: \.self) { index in
+                        Circle()
+                            .fill(index == page ? CarTheme.primaryText : CarTheme.tertiaryText)
+                            .frame(width: 7, height: 7)
+                    }
+                }
+            }
+        }
+        .onChange(of: pages.count) { _, count in
+            if page >= count { page = max(0, count - 1) }
+        }
+    }
+
+    private func grid(_ apps: [HomeApp]) -> some View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
-            ForEach(apps, id: \.title) { app in
-                Button { router.navigate(to: app.screen) } label: {
+            ForEach(apps) { app in
+                Button { tap(app) } label: {
                     VStack(spacing: 12) {
                         Image(systemName: app.icon)
                             .font(.system(size: 40, weight: .semibold))
@@ -113,6 +152,8 @@ private struct AppsGrid: View {
                         Text(app.title)
                             .font(CarTheme.rounded(18, .medium))
                             .foregroundStyle(CarTheme.primaryText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .contentShape(Rectangle())
@@ -120,6 +161,26 @@ private struct AppsGrid: View {
                 .buttonStyle(PressableButtonStyle())
                 .aspectRatio(1.0, contentMode: .fill)
             }
+        }
+    }
+
+    private func pageArrow(_ icon: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(enabled ? CarTheme.primaryText : CarTheme.tertiaryText.opacity(0.4))
+                .frame(width: 34, height: 34)
+                .background(Circle().fill(CarTheme.field.opacity(0.85)))
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+    }
+
+    private func tap(_ app: HomeApp) {
+        if let raw = app.screen, let screen = AppScreen(rawValue: raw) {
+            router.navigate(to: screen)
+        } else {
+            app.open()
         }
     }
 }

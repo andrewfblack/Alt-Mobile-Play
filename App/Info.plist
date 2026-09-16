@@ -32,6 +32,9 @@
     <string>musics</string>
     <string>youtubemusic</string>
     <string>overcast</string>
+    <string>waze</string>
+    <string>comgooglemaps</string>
+    <string>whatsapp</string>
   </array>
   <key>UIApplicationSceneManifest</key>
   <dict>

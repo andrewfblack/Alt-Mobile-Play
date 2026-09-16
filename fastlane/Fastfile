@@ -52,7 +52,7 @@ platform :ios do
       export_method: "app-store",
       output_directory: "build",
       output_name: "AltPlay",
-      development_team: ENV["TEAM_ID"],
+      xcargs: "DEVELOPMENT_TEAM=#{ENV['TEAM_ID']}",
       export_team_id: ENV["TEAM_ID"]
     )
 

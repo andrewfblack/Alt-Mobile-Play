@@ -15,21 +15,24 @@ struct HomeScreenView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 18)
 
-            HStack(alignment: .top, spacing: 20) {
-                // Left: widgets
-                VStack(spacing: 16) {
-                    NowPlayingWidget()
-                    NavigationWidget()
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            GeometryReader { geo in
+                let gridWidth = max(200, min(380, geo.size.width * 0.44))
+                HStack(alignment: .top, spacing: 20) {
+                    // Left: widgets
+                    VStack(spacing: 16) {
+                        NowPlayingWidget()
+                        NavigationWidget()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-                // Right: app grid
-                AppsGrid()
-                    .frame(width: 380)
-                    .frame(maxHeight: .infinity, alignment: .topTrailing)
+                    // Right: app grid
+                    AppsGrid()
+                        .frame(width: gridWidth)
+                        .frame(maxHeight: .infinity, alignment: .topTrailing)
+                }
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(.horizontal, 24)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .onReceive(timer) { now = $0 }
         .onAppear { settings.apply() }

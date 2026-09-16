@@ -67,14 +67,16 @@ struct PodcastsView: View {
     @State private var selectedShow: PodcastShow?
 
     var body: some View {
-        VStack(spacing: 0) {
-            topTitle("Podcasts")
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
+        GeometryReader { geo in
+            let listWidth = max(220, min(320, geo.size.width * 0.34))
+            VStack(spacing: 0) {
+                topTitle("Podcasts")
+                    .padding(.horizontal, 24)
+                    .padding(.top, 16)
 
-            HStack(alignment: .top, spacing: 20) {
-                // Shows list
-                ScrollView {
+                HStack(alignment: .top, spacing: 20) {
+                    // Shows list
+                    ScrollView {
                     LazyVStack(spacing: 8) {
                         ForEach(sampleShows) { show in
                             Button { selectedShow = show } label: {
@@ -106,7 +108,7 @@ struct PodcastsView: View {
                         }
                     }
                 }
-                .frame(width: 320)
+                .frame(width: listWidth)
 
                 // Episodes
                 if let show = selectedShow {
@@ -130,6 +132,7 @@ struct PodcastsView: View {
         }
         .onAppear { if selectedShow == nil { selectedShow = sampleShows.first } }
     }
+}
 
     private func episodeList(_ show: PodcastShow) -> some View {
         ScrollView {

@@ -12,6 +12,7 @@ struct NavigationView: View {
     @FocusState private var searchFocused: Bool
 
     var body: some View {
+        GeometryReader { geo in
         ZStack(alignment: .topLeading) {
             map
                 .ignoresSafeArea()
@@ -23,7 +24,7 @@ struct NavigationView: View {
 
             if showResults {
                 resultsList
-                    .frame(width: 340)
+                    .frame(width: min(340, geo.size.width - 32))
                     .padding(.leading, 16)
                     .padding(.top, 56)
             }
@@ -53,6 +54,7 @@ struct NavigationView: View {
             if nav.isNavigating, let route = nav.route {
                 position = .region(MKCoordinateRegion(route.polyline.boundingMapRect))
             }
+        }
         }
     }
 

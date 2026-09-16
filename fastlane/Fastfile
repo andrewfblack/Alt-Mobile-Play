@@ -51,7 +51,9 @@ platform :ios do
       scheme: "AltPlay",
       export_method: "app-store",
       output_directory: "build",
-      output_name: "AltPlay"
+      output_name: "AltPlay",
+      development_team: ENV["TEAM_ID"],
+      export_team_id: ENV["TEAM_ID"]
     )
 
     upload_to_testflight(

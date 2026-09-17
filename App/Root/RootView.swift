@@ -42,7 +42,7 @@ struct RootView: View {
                 .ignoresSafeArea()
 
                 if showVolume {
-                    VolumePopup(barWidth: barWidth, isPresented: $showVolume)
+                    VolumePopup(isPresented: $showVolume, barWidth: barWidth)
                 }
             }
             .animation(.easeInOut(duration: 0.22), value: router.current)

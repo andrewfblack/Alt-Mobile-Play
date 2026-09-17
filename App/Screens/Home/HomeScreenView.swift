@@ -6,6 +6,7 @@ struct HomeScreenView: View {
     @Environment(AppRouter.self) private var router
     @State private var now = Date()
     @State private var settings = AppSettings.shared
+    @State private var showDrawer = false
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -15,43 +16,51 @@ struct HomeScreenView: View {
                 .padding(.top, 16)
                 .padding(.bottom, 18)
 
-            GeometryReader { geo in
-                let widthBudget = geo.size.width * 0.44
-                let heightBudget = (2 * geo.size.height - 14) / 3 - 6
-                let gridWidth = max(200, min(380, min(widthBudget, heightBudget)))
-                HStack(alignment: .top, spacing: 20) {
-                    // Left: widgets
-                    VStack(spacing: 16) {
-                        NowPlayingWidget()
-                        NavigationWidget()
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-                    // Right: app grid
-                    AppsGrid()
-                        .frame(width: gridWidth)
-                        .frame(maxHeight: .infinity, alignment: .topTrailing)
-                }
-                .padding(.horizontal, 24)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            HStack(alignment: .top, spacing: 20) {
+                NowPlayingWidget()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                NavigationWidget()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .padding(.horizontal, 24)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .overlay(alignment: .bottomLeading) {
+            drawerButton
+        }
+        .overlay {
+            if showDrawer {
+                AppDrawer(isPresented: $showDrawer)
+                    .transition(.opacity)
             }
         }
         .onReceive(timer) { now = $0 }
         .onAppear { settings.apply() }
     }
 
+    private var drawerButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { showDrawer = true }
+        } label: {
+            Image(systemName: "square.grid.2x2.fill")
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(CarTheme.primaryText)
+                .frame(width: 56, height: 56)
+                .background(Circle().fill(CarTheme.tile))
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.12), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Apps")
+        .padding(12)
+    }
+
     private var header: some View {
         HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(now, style: .time)
-                    .font(CarTheme.rounded(52))
-                    .foregroundStyle(CarTheme.primaryText)
-                    .monospacedDigit()
-
-                Text(now, format: .dateTime.weekday(.wide).month(.wide).day())
-                    .font(CarTheme.rounded(20, .medium))
-                    .foregroundStyle(CarTheme.secondaryText)
-            }
+            Text(now, style: .time)
+                .font(CarTheme.rounded(52))
+                .foregroundStyle(CarTheme.primaryText)
+                .monospacedDigit()
             Spacer()
             BatteryIndicator()
         }
@@ -86,101 +95,6 @@ private struct BatteryIndicator: View {
         case ..<0.5: "battery.50percent"
         case ..<0.75: "battery.75percent"
         default: "battery.100percent"
-        }
-    }
-}
-
-// MARK: - Apps Grid
-
-private struct AppsGrid: View {
-    @Environment(AppRouter.self) private var router
-    @State private var settings = AppSettings.shared
-    @State private var page = 0
-
-    private let perPage = 6
-
-    private var pages: [[HomeApp]] {
-        let apps = settings.homeApps
-        guard !apps.isEmpty else { return [[]] }
-        return stride(from: 0, to: apps.count, by: perPage).map {
-            Array(apps[$0 ..< min($0 + perPage, apps.count)])
-        }
-    }
-
-    var body: some View {
-        VStack(spacing: 10) {
-            ZStack {
-                TabView(selection: $page) {
-                    ForEach(pages.indices, id: \.self) { index in
-                        grid(pages[index]).tag(index)
-                    }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-
-                if pages.count > 1 {
-                    HStack {
-                        pageArrow("chevron.left", enabled: page > 0) { page -= 1 }
-                        Spacer()
-                        pageArrow("chevron.right", enabled: page < pages.count - 1) { page += 1 }
-                    }
-                }
-            }
-
-            if pages.count > 1 {
-                HStack(spacing: 6) {
-                    ForEach(pages.indices, id: \.self) { index in
-                        Circle()
-                            .fill(index == page ? CarTheme.primaryText : CarTheme.tertiaryText)
-                            .frame(width: 7, height: 7)
-                    }
-                }
-            }
-        }
-        .onChange(of: pages.count) { _, count in
-            if page >= count { page = max(0, count - 1) }
-        }
-    }
-
-    private func grid(_ apps: [HomeApp]) -> some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
-            ForEach(apps) { app in
-                Button { tap(app) } label: {
-                    VStack(spacing: 12) {
-                        Image(systemName: app.icon)
-                            .font(.system(size: 40, weight: .semibold))
-                            .foregroundStyle(app.color)
-                        Text(app.title)
-                            .font(CarTheme.rounded(18, .medium))
-                            .foregroundStyle(CarTheme.primaryText)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PressableButtonStyle())
-                .aspectRatio(1.0, contentMode: .fill)
-            }
-        }
-    }
-
-    private func pageArrow(_ icon: String, enabled: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(enabled ? CarTheme.primaryText : CarTheme.tertiaryText.opacity(0.4))
-                .frame(width: 34, height: 34)
-                .background(Circle().fill(CarTheme.field.opacity(0.85)))
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-    }
-
-    private func tap(_ app: HomeApp) {
-        if let raw = app.screen, let screen = AppScreen(rawValue: raw) {
-            router.navigate(to: screen)
-        } else {
-            app.open()
         }
     }
 }

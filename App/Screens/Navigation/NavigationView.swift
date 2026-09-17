@@ -8,6 +8,8 @@ struct NavigationView: View {
     @State private var searchText = ""
     @State private var results: [MKMapItem] = []
     @State private var showResults = false
+    @State private var isSearching = false
+    @State private var searchNotice: String?
     @State private var mapType: CarMapType = .standard
     @FocusState private var searchFocused: Bool
 
@@ -24,6 +26,11 @@ struct NavigationView: View {
 
             if showResults {
                 resultsList
+                    .frame(width: min(340, geo.size.width - 32))
+                    .padding(.leading, 16)
+                    .padding(.top, 56)
+            } else if isSearching || searchNotice != nil {
+                searchStatus
                     .frame(width: min(340, geo.size.width - 32))
                     .padding(.leading, 16)
                     .padding(.top, 56)
@@ -108,12 +115,19 @@ struct NavigationView: View {
                 .submitLabel(.search)
                 .onSubmit { Task { await runSearch() } }
             if !searchText.isEmpty {
-                Button { searchText = ""; showResults = false } label: {
+                Button { searchText = ""; showResults = false; searchNotice = nil } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(CarTheme.tertiaryText)
                 }
                 .buttonStyle(.plain)
             }
+            Button { Task { await runSearch() } } label: {
+                Image(systemName: "arrow.forward.circle.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(canSearch ? CarTheme.accent : CarTheme.tertiaryText)
+            }
+            .buttonStyle(.plain)
+            .disabled(!canSearch)
         }
         .padding(14)
         .background(CarTheme.field.opacity(0.92))
@@ -122,6 +136,29 @@ struct NavigationView: View {
             RoundedRectangle(cornerRadius: 16)
                 .strokeBorder(searchFocused ? CarTheme.accent : Color.clear, lineWidth: 2)
         )
+    }
+
+    private var canSearch: Bool {
+        !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var searchStatus: some View {
+        HStack(spacing: 12) {
+            if isSearching {
+                ProgressView().tint(CarTheme.primaryText)
+            } else {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(CarTheme.tertiaryText)
+            }
+            Text(isSearching ? "Searching…" : (searchNotice ?? ""))
+                .font(CarTheme.rounded(16, .medium))
+                .foregroundStyle(CarTheme.secondaryText)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(CarTheme.field.opacity(0.95))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     // MARK: - Results
@@ -177,6 +214,14 @@ struct NavigationView: View {
                     .lineLimit(1)
                 if !nav.routeSummary.isEmpty {
                     Text(nav.routeSummary)
+                        .font(CarTheme.rounded(18))
+                        .foregroundStyle(CarTheme.secondaryText)
+                } else if nav.routingError {
+                    Text("Couldn't calculate a route to here")
+                        .font(CarTheme.rounded(18, .medium))
+                        .foregroundStyle(CarTheme.red)
+                } else {
+                    Text("Calculating route…")
                         .font(CarTheme.rounded(18))
                         .foregroundStyle(CarTheme.secondaryText)
                 }
@@ -281,16 +326,24 @@ struct NavigationView: View {
         let query = searchText.trimmingCharacters(in: .whitespaces)
         guard !query.isEmpty else { return }
         searchFocused = false
+        isSearching = true
+        searchNotice = nil
+        showResults = false
+        results = []
+        defer { isSearching = false }
         let request = MKLocalSearch.Request()
         request.naturalLanguageQuery = query
-        request.resultTypes = .pointOfInterest
         do {
             let resp = try await MKLocalSearch(request: request).start()
             results = resp.mapItems
-            showResults = !results.isEmpty
+            if results.isEmpty {
+                searchNotice = "No results for “\(query)”. Try a town, address, or landmark."
+            } else {
+                showResults = true
+            }
         } catch {
             results = []
-            showResults = false
+            searchNotice = "Search failed. Check your connection and try again."
         }
     }
 
@@ -298,6 +351,7 @@ struct NavigationView: View {
         nav.setTarget(item)
         searchText = ""
         showResults = false
+        searchNotice = nil
         Task { await nav.calculateRoute(); zoom(to: item.placemark.coordinate) }
     }
 

@@ -24,7 +24,7 @@ struct RootView: View {
 
             if router.current != .home {
                 HomeButton()
-                    .padding(24)
+                    .padding(12)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
             }
         }

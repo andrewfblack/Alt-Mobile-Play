@@ -15,10 +15,13 @@ struct MusicView: View {
     @State private var section: MusicSection = .nowPlaying
 
     var body: some View {
-        VStack(spacing: 16) {
-            topTitle("Music")
+        VStack(spacing: 8) {
+            Text("Apple Music")
+                .font(CarTheme.rounded(24, .semibold))
+                .foregroundStyle(CarTheme.primaryText)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 24)
-                .padding(.top, 16)
+                .padding(.top, 8)
 
             if music.authStatus == .authorized {
                 Picker("", selection: $section) {
@@ -62,50 +65,40 @@ struct MusicView: View {
 
     private var nowPlayingView: some View {
         GeometryReader { geo in
-            let artworkSize = max(160, min(280, geo.size.width * 0.34))
-            VStack(spacing: 24) {
-                Spacer()
-                HStack(spacing: 28) {
+            let artworkSize = max(0, min(280, geo.size.width * 0.34, geo.size.height - 24))
+                HStack(spacing: 24) {
                     artworkView
                         .frame(width: artworkSize, height: artworkSize)
-                    VStack(alignment: .leading, spacing: 24) {
-                        trackInfo
-                        if music.isExternalNowPlaying {
-                            Text("Controlling the audio app that is currently playing. Open the app to pick something different, or choose from Songs, Albums, or Playlists below to play your own library.")
+                    VStack(alignment: .leading, spacing: 8) {
+                        if music.hasContent {
+                            trackInfo
+                        } else {
+                            Text("No Apple Music track selected")
+                                .font(CarTheme.rounded(24, .semibold))
+                                .foregroundStyle(CarTheme.primaryText)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text("Choose a song, album, or playlist to begin.")
                                 .font(CarTheme.rounded(15))
                                 .foregroundStyle(CarTheme.secondaryText)
-                            let apps = ExternalAudioApps.installed
-                            if !apps.isEmpty {
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 14) {
-                                        ForEach(apps) { app in
-                                            Button { ExternalAudioApps.open(app) } label: {
-                                                HStack(spacing: 10) {
-                                                    Image(systemName: app.icon)
-                                                        .font(.system(size: 16, weight: .semibold))
-                                                    Text(app.name)
-                                                        .font(CarTheme.rounded(16, .semibold))
-                                                }
-                                                .foregroundStyle(CarTheme.primaryText)
-                                                .padding(.horizontal, 16)
-                                                .padding(.vertical, 10)
-                                                .background(CarTheme.accent.opacity(0.15))
-                                                .clipShape(Capsule())
-                                            }
-                                            .buttonStyle(.plain)
-                                        }
-                                    }
-                                }
+                            Button("Browse Songs") { section = .songs }
+                                .buttonStyle(.bordered)
+                                .tint(CarTheme.accent)
+                        }
+                        Spacer(minLength: 0)
+                        transportControls
+                        Group {
+                            if music.hasContent {
+                                progressBar
+                            } else {
+                                Color.clear
                             }
                         }
-                        transportControls
-                        progressBar
+                        .frame(height: 62)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
-                .padding(.horizontal, 32)
-                Spacer()
-            }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
         }
     }
 
@@ -114,7 +107,7 @@ struct MusicView: View {
             if let img = music.artwork {
                 Image(uiImage: img)
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
+                    .aspectRatio(contentMode: .fit)
             } else {
                 ZStack {
                     CarTheme.tile
@@ -128,18 +121,19 @@ struct MusicView: View {
     }
 
     private var trackInfo: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
             Text(music.title)
-                .font(CarTheme.rounded(30, .bold))
+                .font(CarTheme.rounded(26, .bold))
                 .foregroundStyle(CarTheme.primaryText)
                 .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
             Text(music.artist)
-                .font(CarTheme.rounded(22))
+                .font(CarTheme.rounded(19))
                 .foregroundStyle(CarTheme.secondaryText)
                 .lineLimit(1)
             Text(music.album)
-                .font(CarTheme.rounded(18))
-                .foregroundStyle(CarTheme.tertiaryText)
+                .font(CarTheme.rounded(15))
+                .foregroundStyle(CarTheme.secondaryText)
                 .lineLimit(1)
         }
     }
@@ -149,40 +143,46 @@ struct MusicView: View {
             Button { music.previous() } label: {
                 Image(systemName: "backward.fill")
                     .font(.system(size: 32))
+                    .frame(width: 56, height: 52)
             }
+            .accessibilityLabel("Previous track")
             Button { music.playPause() } label: {
                 Image(systemName: music.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 48))
+                    .font(.system(size: 40))
+                    .frame(width: 64, height: 52)
             }
+            .accessibilityLabel(music.isPlaying ? "Pause" : "Play")
             Button { music.next() } label: {
                 Image(systemName: "forward.fill")
                     .font(.system(size: 32))
+                    .frame(width: 56, height: 52)
             }
+            .accessibilityLabel("Next track")
         }
         .buttonStyle(.plain)
         .foregroundStyle(CarTheme.primaryText)
+        .disabled(!music.hasContent)
+        .opacity(music.hasContent ? 1 : 0.35)
     }
 
     private var progressBar: some View {
-        VStack(spacing: 6) {
-            Slider(
+        VStack(spacing: 0) {
+            PlaybackSlider(
                 value: Binding(
-                    get: { music.currentTime },
+                    get: { max(0, min(music.currentTime, max(music.duration, 1))) },
                     set: { music.seek($0) }
                 ),
-                in: 0 ... max(music.duration, 1)
-            ) {
-                EmptyView()
-            } minimumValueLabel: {
+                duration: max(music.duration, 1)
+            )
+            .frame(height: 44)
+            .disabled(music.duration <= 0)
+            HStack {
                 Text(formatTime(music.currentTime))
-                    .font(CarTheme.rounded(13).monospacedDigit())
-                    .foregroundStyle(CarTheme.secondaryText)
-            } maximumValueLabel: {
-                Text(formatTime(music.duration))
-                    .font(CarTheme.rounded(13).monospacedDigit())
-                    .foregroundStyle(CarTheme.secondaryText)
+                Spacer()
+                Text("−" + formatTime(max(0, music.duration - music.currentTime)))
             }
-            .tint(CarTheme.accent)
+            .font(CarTheme.rounded(13).monospacedDigit())
+            .foregroundStyle(CarTheme.secondaryText)
         }
     }
 

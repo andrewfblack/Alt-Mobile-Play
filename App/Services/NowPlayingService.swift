@@ -14,10 +14,9 @@ final class NowPlayingService {
     var albums: [MPMediaItemCollection] = []
     var playlists: [MPMediaPlaylist] = []
 
-    var hasContent: Bool { nowItem != nil || isPlaying }
-    var isExternalNowPlaying: Bool { isPlaying && nowItem == nil }
+    var hasContent: Bool { nowItem != nil }
     var artwork: UIImage? { nowItem?.artwork?.image(at: CGSize(width: 300, height: 300)) }
-    var title: String { nowItem?.title ?? (isPlaying ? "Now Playing" : "Not Playing") }
+    var title: String { nowItem?.title ?? "No Apple Music track selected" }
     var artist: String { nowItem?.artist ?? "" }
     var album: String { nowItem?.albumTitle ?? "" }
 
@@ -40,8 +39,11 @@ final class NowPlayingService {
             queue: .main
         ) { [weak self] _ in self?.syncState() }
 
+        syncNow()
+        syncState()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.currentTime = self?.player.currentPlaybackTime ?? 0
+            self?.syncNow()
+            self?.syncState()
         }
         RunLoop.main.add(timer!, forMode: .common)
     }
@@ -59,7 +61,6 @@ final class NowPlayingService {
         }
         albums = MPMediaQuery.albums().collections ?? [MPMediaItemCollection]()
         playlists = (MPMediaQuery.playlists().collections ?? []).compactMap { $0 as? MPMediaPlaylist }
-        player.setQueue(with: MPMediaQuery.songs())
     }
 
     func play(_ item: MPMediaItem) {
@@ -86,12 +87,13 @@ final class NowPlayingService {
     }
 
     func playPause() {
+        guard hasContent else { return }
         isPlaying ? player.pause() : player.play()
     }
 
-    func next() { player.skipToNextItem() }
-    func previous() { player.skipToPreviousItem() }
-    func seek(_ t: Double) { player.currentPlaybackTime = t }
+    func next() { if hasContent { player.skipToNextItem() } }
+    func previous() { if hasContent { player.skipToPreviousItem() } }
+    func seek(_ t: Double) { if hasContent { player.currentPlaybackTime = t } }
 
     private func syncNow() {
         nowItem = player.nowPlayingItem
@@ -100,6 +102,6 @@ final class NowPlayingService {
     }
 
     private func syncState() {
-        isPlaying = player.playbackState == .playing
+        isPlaying = hasContent && player.playbackState == .playing
     }
 }

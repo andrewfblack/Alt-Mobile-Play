@@ -22,7 +22,7 @@ private struct NowPlayingWidget: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("NOW PLAYING")
+            Text("APPLE MUSIC")
                 .font(CarTheme.rounded(10, .semibold))
                 .foregroundStyle(CarTheme.accent)
                 .tracking(0.8)
@@ -101,6 +101,8 @@ private struct NowPlayingWidget: View {
         }
         .frame(maxWidth: .infinity)
         .buttonStyle(.plain)
+        .disabled(!music.hasContent)
+        .opacity(music.hasContent ? 1 : 0.35)
     }
 }
 

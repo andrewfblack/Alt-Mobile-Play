@@ -32,13 +32,11 @@ struct LeftControlBar: View {
 
             Spacer(minLength: 0)
 
-            VStack(spacing: width * 0.20) {
-                Button(action: onHome) {
-                    barIcon(router.current == .home ? "square.grid.2x2.fill" : "house.fill")
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(router.current == .home ? "Apps" : "Home")
+            Button(action: onHome) {
+                barIcon(router.current == .home ? "square.grid.2x2.fill" : "house.fill")
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(router.current == .home ? "Apps" : "Home")
             .padding(.bottom, width * 0.15)
         }
         .frame(width: width)
@@ -49,11 +47,15 @@ struct LeftControlBar: View {
 
     private func barIcon(_ name: String) -> some View {
         Image(systemName: name)
-            .font(.system(size: width * 0.19, weight: .semibold))
+            .font(.system(size: width * 0.32, weight: .semibold))
             .foregroundStyle(CarTheme.primaryText)
-            .frame(width: width * 0.52, height: width * 0.52)
-            .background(Circle().fill(CarTheme.tile))
-            .overlay(Circle().strokeBorder(CarTheme.primaryText.opacity(0.14), lineWidth: 1))
+            .frame(width: width * 0.78, height: width * 1.05)
+            .background(RoundedRectangle(cornerRadius: width * 0.20, style: .continuous).fill(CarTheme.tile))
+            .overlay {
+                RoundedRectangle(cornerRadius: width * 0.20, style: .continuous)
+                    .strokeBorder(CarTheme.primaryText.opacity(0.14), lineWidth: 1)
+            }
+            .contentShape(RoundedRectangle(cornerRadius: width * 0.20, style: .continuous))
     }
 }
 
@@ -63,16 +65,11 @@ private struct BarBattery: View {
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        VStack(spacing: width * 0.04) {
-            Image(systemName: batteryIcon)
-                .font(.system(size: width * 0.16, weight: .semibold))
-            if level >= 0 {
-                Text("\(Int((level * 100).rounded()))%")
-                    .font(CarTheme.rounded(width * 0.135, .medium))
-                    .monospacedDigit()
-            }
-        }
+        Image(systemName: batteryIcon)
+        .font(.system(size: width * 0.27, weight: .semibold))
         .foregroundStyle(CarTheme.secondaryText)
+        .accessibilityLabel("Battery")
+        .accessibilityValue(level >= 0 ? "\(Int((level * 100).rounded())) percent" : "Level unavailable")
         .onReceive(timer) { _ in level = UIDevice.current.batteryLevel }
     }
 

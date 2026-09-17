@@ -28,7 +28,7 @@ final class AudiobookPlayerService {
     let supportedSpeeds: [Float] = [0.75, 1.0, 1.25, 1.5, 2.0]
 
     var hasContent: Bool { currentBook != nil }
-    var title: String { session?.displayTitle ?? currentBook?.media.title ?? "" }
+    var title: String { session?.displayTitle ?? currentBook?.media?.title ?? "" }
     var author: String { session?.displayAuthor ?? currentBook?.media?.authorName ?? "" }
     var series: String { currentBook?.media?.metadata?.seriesName ?? "" }
 
@@ -41,7 +41,7 @@ final class AudiobookPlayerService {
         }
 
         endObserver = NotificationCenter.default.addObserver(
-            forName: AVPlayerItemDidPlayToEndTimeNotification,
+            forName: AVPlayerItem.didPlayToEndTimeNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
@@ -76,7 +76,7 @@ final class AudiobookPlayerService {
             startProgressTimer()
             updateNowPlaying()
             await refreshArtwork()
-            await syncProgress()
+            syncProgress()
         } catch {
             absService.lastError = error.localizedDescription
         }
@@ -142,9 +142,9 @@ final class AudiobookPlayerService {
     // MARK: - Track sequencing
 
     private func loadTrack(_ index: Int, startTime: Double) {
-        guard index >= 0, index < tracks.count, let track = tracks[index],
-              let url = streamURL(for: track)
-        else { return }
+        guard index >= 0, index < tracks.count else { return }
+        let track = tracks[index]
+        guard let url = streamURL(for: track) else { return }
 
         activeTrackIndex = index
         currentTime = Self.start(for: index, tracks: tracks) + (startTime > 0 ? startTime : 0)
@@ -180,8 +180,10 @@ final class AudiobookPlayerService {
     }
 
     private func streamURL(for track: ABSAudioTrack) -> URL? {
-        guard let path = track.contentUrl, let base = absService.baseURL else { return nil }
-        guard var components = URLComponents(string: path, relativeTo: base) else { return nil }
+        guard let path = track.contentUrl, let base = absService.baseURL,
+              let url = URL(string: path, relativeTo: base),
+              var components = URLComponents(url: url, resolvingAgainstBaseURL: true)
+        else { return nil }
         var items = components.queryItems ?? []
         items.append(URLQueryItem(name: "token", value: absService.token))
         components.queryItems = items

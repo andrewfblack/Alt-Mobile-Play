@@ -100,7 +100,6 @@ struct MusicView: View {
                         }
                         transportControls
                         progressBar
-                        volumeBar
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -185,11 +184,6 @@ struct MusicView: View {
             }
             .tint(CarTheme.accent)
         }
-    }
-
-    private var volumeBar: some View {
-        SystemVolumeView()
-            .frame(maxWidth: 260)
     }
 
     // MARK: - Songs
@@ -375,16 +369,4 @@ struct MusicView: View {
         let s = Int(t) % 60
         return String(format: "%d:%02d", m, s)
     }
-}
-
-// MARK: - System Volume
-
-private struct SystemVolumeView: UIViewRepresentable {
-    func makeUIView(context: Context) -> MPVolumeView {
-        let view = MPVolumeView(frame: .zero)
-        view.tintColor = UIColor(CarTheme.accent)
-        view.showsVolumeSlider = true
-        return view
-    }
-    func updateUIView(_ uiView: MPVolumeView, context: Context) {}
 }

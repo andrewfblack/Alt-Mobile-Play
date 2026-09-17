@@ -2,9 +2,11 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppRouter.self) private var router
+    @State private var showDrawer = false
+    @State private var showVolume = false
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .leading) {
             CarTheme.background
                 .ignoresSafeArea()
 
@@ -21,33 +23,33 @@ struct RootView: View {
             }
             .id(router.current)
             .transition(.opacity)
+            .padding(.leading, LeftControlBar.width)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-            if router.current != .home {
-                HomeButton()
-                    .padding(12)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+            LeftControlBar(
+                onHome: {
+                    if router.current == .home {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { showDrawer = true }
+                    } else {
+                        router.navigate(to: .home)
+                    }
+                },
+                onVolume: { showVolume = true }
+            )
+            .ignoresSafeArea()
+
+            if showDrawer {
+                AppDrawer(isPresented: $showDrawer)
+                    .transition(.opacity)
+            }
+
+            if showVolume {
+                VolumePopup(isPresented: $showVolume)
             }
         }
         .animation(.easeInOut(duration: 0.22), value: router.current)
         .preferredColorScheme(.dark)
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
-    }
-}
-
-private struct HomeButton: View {
-    @Environment(AppRouter.self) private var router
-
-    var body: some View {
-        Button { router.navigate(to: .home) } label: {
-            Image(systemName: "house.fill")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(CarTheme.primaryText)
-                .frame(width: 56, height: 56)
-                .background(Circle().fill(CarTheme.tile))
-                .overlay(Circle().strokeBorder(Color.white.opacity(0.12), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Home")
     }
 }

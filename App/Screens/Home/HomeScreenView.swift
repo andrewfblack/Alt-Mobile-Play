@@ -3,99 +3,19 @@ import CoreLocation
 import MapKit
 
 struct HomeScreenView: View {
-    @Environment(AppRouter.self) private var router
-    @State private var now = Date()
     @State private var settings = AppSettings.shared
-    @State private var showDrawer = false
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
-                .padding(.bottom, 18)
-
-            HStack(alignment: .top, spacing: 20) {
-                NowPlayingWidget()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                NavigationWidget()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .padding(.horizontal, 24)
+        HStack(alignment: .top, spacing: 20) {
+            NowPlayingWidget()
+                .frame(maxWidth: .infinity, alignment: .leading)
+            NavigationWidget()
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .overlay(alignment: .bottomLeading) {
-            drawerButton
-        }
-        .overlay {
-            if showDrawer {
-                AppDrawer(isPresented: $showDrawer)
-                    .transition(.opacity)
-            }
-        }
-        .onReceive(timer) { now = $0 }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.horizontal, 24)
+        .padding(.top, 24)
         .onAppear { settings.apply() }
-    }
-
-    private var drawerButton: some View {
-        Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.85)) { showDrawer = true }
-        } label: {
-            Image(systemName: "square.grid.2x2.fill")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundStyle(CarTheme.primaryText)
-                .frame(width: 56, height: 56)
-                .background(Circle().fill(CarTheme.tile))
-                .overlay(Circle().strokeBorder(Color.white.opacity(0.12), lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Apps")
-        .padding(12)
-    }
-
-    private var header: some View {
-        HStack(alignment: .top) {
-            Text(now, style: .time)
-                .font(CarTheme.rounded(52))
-                .foregroundStyle(CarTheme.primaryText)
-                .monospacedDigit()
-            Spacer()
-            BatteryIndicator()
-        }
-    }
-}
-
-// MARK: - Battery
-
-private struct BatteryIndicator: View {
-    @State private var level: Float = UIDevice.current.batteryLevel
-
-    private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: batteryIcon)
-                .font(.system(size: 22, weight: .semibold))
-            if level >= 0 {
-                Text("\(Int((level * 100).rounded()))%")
-                    .font(CarTheme.rounded(22, .medium))
-                    .monospacedDigit()
-            }
-        }
-        .foregroundStyle(CarTheme.secondaryText)
-        .onReceive(timer) { _ in level = UIDevice.current.batteryLevel }
-    }
-
-    private var batteryIcon: String {
-        switch level {
-        case ..<0.1: "battery.0percent"
-        case ..<0.25: "battery.25percent"
-        case ..<0.5: "battery.50percent"
-        case ..<0.75: "battery.75percent"
-        default: "battery.100percent"
-        }
     }
 }
 

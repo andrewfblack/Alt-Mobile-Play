@@ -26,12 +26,12 @@ struct NavigationView: View {
 
             if showResults {
                 resultsList
-                    .frame(width: min(340, geo.size.width - 32))
+                    .frame(width: min(560, geo.size.width - 32))
                     .padding(.leading, 16)
                     .padding(.top, 56)
             } else if isSearching || searchNotice != nil {
                 searchStatus
-                    .frame(width: min(340, geo.size.width - 32))
+                    .frame(width: min(560, geo.size.width - 32))
                     .padding(.leading, 16)
                     .padding(.top, 56)
             }

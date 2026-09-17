@@ -4,12 +4,16 @@ struct HomeScreenView: View {
     @State private var settings = AppSettings.shared
 
     var body: some View {
-        VStack(spacing: 22) {
-            widgetSlot(0)
-            widgetSlot(1)
+        GeometryReader { geo in
+            let slotWidth = (geo.size.width - 24) / 2
+            HStack(spacing: 24) {
+                widgetSlot(0)
+                    .frame(width: slotWidth, height: geo.size.height)
+                widgetSlot(1)
+                    .frame(width: slotWidth, height: geo.size.height)
+            }
         }
         .padding(24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear { settings.apply() }
     }
 

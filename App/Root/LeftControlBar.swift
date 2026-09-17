@@ -10,19 +10,37 @@ struct LeftControlBar: View {
     @State private var now = Date()
     private let clockTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
+    private static let is24hr: Bool = (DateFormatter.dateFormat(fromTemplate: "j", options: 0, locale: .current) ?? "").contains("H")
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = is24hr ? "HH:mm" : "h:mm"
+        return f
+    }()
+    private static let periodFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "a"
+        return f
+    }()
+
     var body: some View {
         VStack(spacing: 0) {
-            VStack(spacing: width * 0.13) {
-                Text(now, style: .time)
-                    .font(CarTheme.rounded(width * 0.27, .semibold))
+            VStack(spacing: width * 0.05) {
+                Text(Self.timeFormatter.string(from: now))
+                    .font(CarTheme.rounded(width * 0.30, .semibold))
                     .foregroundStyle(CarTheme.primaryText)
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
-
+                if !Self.is24hr {
+                    Text(Self.periodFormatter.string(from: now).uppercased())
+                        .font(CarTheme.rounded(width * 0.09, .semibold))
+                        .foregroundStyle(CarTheme.secondaryText)
+                        .tracking(1)
+                }
                 BarBattery(width: width)
+                    .padding(.top, width * 0.03)
             }
-            .padding(.top, width * 0.11)
+            .padding(.top, width * 0.12)
 
             Spacer(minLength: 0)
 

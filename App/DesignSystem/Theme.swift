@@ -34,7 +34,16 @@ struct RGBColor: Codable, Equatable {
 
     init(from decoder: Decoder) throws {
         if let hex = try? decoder.singleValueContainer().decode(String.self) {
-            self.init(hex)
+            var value: UInt64 = 0
+            let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+            Scanner(string: cleaned).scanHexInt64(&value)
+            if cleaned.count >= 6 {
+                red = Double((value >> 16) & 0xFF) / 255
+                green = Double((value >> 8) & 0xFF) / 255
+                blue = Double(value & 0xFF) / 255
+                return
+            }
+            red = 0; green = 0; blue = 0
             return
         }
         if let arr = try? decoder.singleValueContainer().decode([Double].self), arr.count >= 3 {
@@ -194,7 +203,8 @@ final class ThemeManager {
     private init() {
         customThemes = Self.loadCustomThemes()
         let savedID = UserDefaults.standard.string(forKey: "themeID")
-        if let theme = allThemes.first(where: { $0.id == savedID }) {
+        let all = Self.builtins + customThemes
+        if let theme = all.first(where: { $0.id == savedID }) {
             current = theme
         } else {
             current = .dark

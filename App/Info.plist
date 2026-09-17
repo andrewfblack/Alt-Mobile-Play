@@ -48,6 +48,47 @@
     <string>waze</string>
     <string>comgooglemaps</string>
     <string>whatsapp</string>
+    <string>maps</string>
+    <string>facetime</string>
+    <string>com.apple.iBooks</string>
+    <string>tg</string>
+    <string>sgnl</string>
+    <string>slack</string>
+    <string>msteams</string>
+    <string>zoommtg</string>
+    <string>discord</string>
+    <string>reddit</string>
+    <string>linkedin</string>
+    <string>pinterest</string>
+    <string>snapchat</string>
+    <string>instagram</string>
+    <string>fb</string>
+    <string>fb-messenger</string>
+    <string>twitter</string>
+    <string>youtube</string>
+    <string>nflx</string>
+    <string>hbomax</string>
+    <string>disneyplus</string>
+    <string>paramount</string>
+    <string>hulu</string>
+    <string>tubi</string>
+    <string>peacock</string>
+    <string>amzn</string>
+    <string>pandora</string>
+    <string>tidal</string>
+    <string>deezer</string>
+    <string>soundcloud</string>
+    <string>pktc</string>
+    <string>plex</string>
+    <string>homeassistant</string>
+    <string>jellyfin</string>
+    <string>vlc</string>
+    <string>uber</string>
+    <string>ubereats</string>
+    <string>lyft</string>
+    <string>doordash</string>
+    <string>grubhub</string>
+    <string>github</string>
   </array>
   <key>UIApplicationSceneManifest</key>
   <dict>

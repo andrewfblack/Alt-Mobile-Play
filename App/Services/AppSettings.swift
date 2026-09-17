@@ -94,6 +94,13 @@ final class AppSettings {
         }
     }
 
+    func moveApp(_ app: HomeApp, by offset: Int) {
+        guard let index = homeApps.firstIndex(where: { $0.id == app.id }) else { return }
+        let target = index + offset
+        guard target >= 0, target < homeApps.count else { return }
+        homeApps.swapAt(index, target)
+    }
+
     func setWidget(_ kind: HomeWidgetKind, at index: Int) {
         guard index >= 0, index < homeWidgets.count else { return }
         if let other = homeWidgets.firstIndex(of: kind), other != index {

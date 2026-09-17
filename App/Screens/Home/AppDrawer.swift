@@ -80,13 +80,28 @@ struct AppDrawerView: View {
             columns: Array(repeating: GridItem(.fixed(tile), spacing: spacing), count: columns),
             spacing: spacing
         ) {
-            ForEach(apps) { app in
+            ForEach(Array(apps.enumerated()), id: \.element.id) { cellIndex, app in
                 Button { open(app) } label: {
                     tileView(app)
                         .frame(width: tile, height: tile)
                 }
                 .buttonStyle(PressableButtonStyle())
+                .accessibilityHint("Drag to rearrange")
+                .draggable(app.id)
+                .dropDestination(for: String.self) { items, _ in
+                    guard let draggedID = items.first, draggedID != app.id else { return false }
+                    relocate(draggedID, toAbsoluteIndex: page * perPage + cellIndex)
+                    return true
+                }
             }
+        }
+        .dropDestination(for: String.self) { items, location in
+            guard let draggedID = items.first else { return false }
+            let col = min(columns - 1, max(0, Int(location.x / (tile + spacing))))
+            let row = min(rows - 1, max(0, Int(location.y / (tile + spacing))))
+            let cell = row * columns + col
+            relocate(draggedID, toAbsoluteIndex: page * perPage + min(cell, apps.count - 1))
+            return true
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -127,5 +142,15 @@ struct AppDrawerView: View {
         } else {
             app.open()
         }
+    }
+
+    private func relocate(_ id: String, toAbsoluteIndex target: Int) {
+        var all = settings.homeApps
+        guard let from = all.firstIndex(where: { $0.id == id }) else { return }
+        let to = min(max(0, target), all.count - 1)
+        guard from != to else { return }
+        let item = all.remove(at: from)
+        all.insert(item, at: min(to, all.count))
+        settings.homeApps = all
     }
 }

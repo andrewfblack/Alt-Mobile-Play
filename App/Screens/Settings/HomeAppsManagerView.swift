@@ -37,14 +37,37 @@ struct HomeAppsManagerView: View {
                             emptyRow("No apps on the home screen")
                         } else {
                             rows(settings.homeApps) { app in
-                                actionButton(icon: "minus.circle.fill", tint: CarTheme.red) {
-                                    settings.removeFromHome(app)
+                                HStack(spacing: 16) {
+                                    Button {
+                                        settings.moveApp(app, by: -1)
+                                    } label: {
+                                        Image(systemName: "arrow.up")
+                                            .font(.system(size: 20, weight: .semibold))
+                                            .foregroundStyle(CarTheme.primaryText)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(settings.homeApps.first?.id == app.id)
+
+                                    Button {
+                                        settings.moveApp(app, by: 1)
+                                    } label: {
+                                        Image(systemName: "arrow.down")
+                                            .font(.system(size: 20, weight: .semibold))
+                                            .foregroundStyle(CarTheme.primaryText)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .disabled(settings.homeApps.last?.id == app.id)
+
+                                    actionButton(icon: "minus.circle.fill", tint: CarTheme.red) {
+                                        settings.removeFromHome(app)
+                                    }
                                 }
+                                .padding(.leading, 4)
                             }
                         }
                     }
 
-                    section("Add Suggested Apps") {
+                    section("Add Suggested Apps · \(HomeAppCatalog.installedSuggestions.count) detected") {
                         let available = HomeAppCatalog.installedSuggestions.filter { !settings.isOnHome($0) }
                         if available.isEmpty {
                             emptyRow("No other installed apps detected")
@@ -115,6 +138,7 @@ struct HomeAppsManagerView: View {
                 .foregroundStyle(tint)
         }
         .buttonStyle(.plain)
+        .contentShape(Rectangle())
     }
 
     private func emptyRow(_ text: String) -> some View {
@@ -138,19 +162,22 @@ struct HomeAppsManagerView: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
 
-            HStack(spacing: 10) {
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 44), spacing: 10)],
+                spacing: 10
+            ) {
                 ForEach(HomeAppCatalog.customIcons, id: \.self) { icon in
                     Button { customIcon = icon } label: {
                         Image(systemName: icon)
                             .font(.system(size: 18))
                             .foregroundStyle(customIcon == icon ? .white : CarTheme.secondaryText)
-                            .frame(width: 40, height: 40)
+                            .frame(width: 44, height: 44)
                             .background(customIcon == icon ? CarTheme.accent : CarTheme.field)
                             .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
-            }
+        }
 
             Button {
                 let app = HomeApp(

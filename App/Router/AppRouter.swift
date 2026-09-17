@@ -9,6 +9,7 @@ enum AppScreen: String, Hashable {
     case phone
     case messages
     case podcasts
+    case audiobooks
     case settings
 }
 

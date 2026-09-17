@@ -88,7 +88,7 @@ struct AppDrawerView: View {
                 .buttonStyle(PressableButtonStyle())
             }
         }
-        .frame(maxWidth: .infinity, alignment: .center)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func tileView(_ app: HomeApp) -> some View {

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @Environment(AppRouter.self) private var router
@@ -7,6 +8,10 @@ struct SettingsView: View {
     @State private var themeManager = ThemeManager.shared
     @State private var showThemeEditor = false
     @State private var editingTheme: Theme?
+    @State private var absPassword = ""
+    @State private var absConnecting = false
+    @State private var absError: String?
+    @State private var absService = AudiobookshelfService.shared
 
     var body: some View {
         VStack(spacing: 0) {
@@ -120,6 +125,103 @@ struct SettingsView: View {
                                 }
                             )
                         )
+                    }
+
+                    section("Audiobookshelf") {
+                        settingTextField(
+                            icon: "server.rack",
+                            title: "Server URL",
+                            placeholder: "http://192.168.1.100:3333",
+                            text: $settings.absServerURL,
+                            keyboard: .URL
+                        )
+                        settingTextField(
+                            icon: "person.fill",
+                            title: "Username",
+                            placeholder: "username",
+                            text: $settings.absUsername,
+                            keyboard: .default
+                        )
+                        settingSecureField(
+                            icon: "lock.fill",
+                            title: "Password",
+                            keyboard: .default
+                        )
+
+                        if absService.isConnected {
+                            HStack(spacing: 14) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(CarTheme.green)
+                                    .frame(width: 40, height: 40)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Connected")
+                                        .font(CarTheme.rounded(18, .semibold))
+                                        .foregroundStyle(CarTheme.primaryText)
+                                    Text(absServerVersionText)
+                                        .font(CarTheme.rounded(14))
+                                        .foregroundStyle(CarTheme.secondaryText)
+                                }
+                                Spacer()
+                            }
+                            .padding(14)
+                        }
+
+                        if let absError {
+                            HStack(alignment: .top, spacing: 14) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(CarTheme.orange)
+                                    .frame(width: 40, height: 40)
+                                Text(absError)
+                                    .font(CarTheme.rounded(14))
+                                    .foregroundStyle(CarTheme.orange)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(14)
+                        }
+
+                        if absService.isConnected {
+                            Button {
+                                absService.clear()
+                                absPassword = ""
+                                absError = nil
+                            } label: {
+                                HStack(spacing: 14) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 20))
+                                        .foregroundStyle(CarTheme.orange)
+                                        .frame(width: 40, height: 40)
+                                    Text("Disconnect")
+                                        .font(CarTheme.rounded(18, .semibold))
+                                        .foregroundStyle(CarTheme.primaryText)
+                                    Spacer()
+                                }
+                                .padding(14)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Button {
+                                connectToABS()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    if absConnecting {
+                                        ProgressView()
+                                            .tint(.white)
+                                    }
+                                    Text(absConnecting ? "Connecting…" : "Connect")
+                                        .font(CarTheme.rounded(18, .semibold))
+                                }
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(CarTheme.accent)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                            .opacity(absConnecting ? 0.7 : 1)
+                        }
                     }
 
                     section("About") {
@@ -247,6 +349,85 @@ struct SettingsView: View {
        "primaryText": [1, 0.96, 0.9]}
     ]
     """
+
+    private var absServerVersionText: String {
+        let version = settings.absServerVersion
+        return version.isEmpty
+            ? "@\(settings.absUsername)"
+            : "Server v\(version) · \(settings.absUsername)"
+    }
+
+    private func connectToABS() {
+        let url = settings.absServerURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty else {
+            absError = "Enter your server URL first."
+            return
+        }
+        guard !absPassword.isEmpty else {
+            absError = "Enter your password."
+            return
+        }
+        absError = nil
+        absConnecting = true
+        Task {
+            defer { absConnecting = false }
+            do {
+                try await absService.login(username: settings.absUsername, password: absPassword)
+                absPassword = ""
+            } catch {
+                absError = (error as? ABSError)?.errorDescription ?? error.localizedDescription
+            }
+        }
+    }
+
+    private func settingTextField(
+        icon: String, title: String, placeholder: String,
+        text: Binding<String>, keyboard: UIKeyboardType
+    ) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundStyle(CarTheme.accent)
+                .frame(width: 40, height: 40)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(CarTheme.rounded(14, .medium))
+                    .foregroundStyle(CarTheme.secondaryText)
+                TextField(placeholder, text: text)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(keyboard)
+                    .font(CarTheme.rounded(18, .semibold))
+                    .foregroundStyle(CarTheme.primaryText)
+            }
+            Spacer()
+        }
+        .padding(14)
+    }
+
+    private func settingSecureField(
+        icon: String, title: String, keyboard: UIKeyboardType
+    ) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundStyle(CarTheme.accent)
+                .frame(width: 40, height: 40)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(CarTheme.rounded(14, .medium))
+                    .foregroundStyle(CarTheme.secondaryText)
+                SecureField("password", text: $absPassword)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(keyboard)
+                    .font(CarTheme.rounded(18, .semibold))
+                    .foregroundStyle(CarTheme.primaryText)
+            }
+            Spacer()
+        }
+        .padding(14)
+    }
 
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 0) {

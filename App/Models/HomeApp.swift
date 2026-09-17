@@ -45,6 +45,7 @@ enum HomeAppCatalog {
         HomeApp(builtIn: .phone, title: "Phone", icon: "phone.fill", colorIndex: 2),
         HomeApp(builtIn: .messages, title: "Messages", icon: "message.fill", colorIndex: 2),
         HomeApp(builtIn: .podcasts, title: "Podcasts", icon: "mic.fill", colorIndex: 3),
+        HomeApp(builtIn: .audiobooks, title: "Audiobooks", icon: "book.fill", colorIndex: 4),
         HomeApp(builtIn: .settings, title: "Settings", icon: "gearshape.fill", colorIndex: 5),
     ]
 

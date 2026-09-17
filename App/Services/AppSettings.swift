@@ -20,6 +20,19 @@ final class AppSettings {
         didSet { saveHomeWidgets() }
     }
 
+    var absServerURL: String {
+        didSet { UserDefaults.standard.set(absServerURL, forKey: "absServerURL") }
+    }
+    var absUsername: String {
+        didSet { UserDefaults.standard.set(absUsername, forKey: "absUsername") }
+    }
+    var absToken: String {
+        didSet { UserDefaults.standard.set(absToken, forKey: "absToken") }
+    }
+    var absServerVersion: String {
+        didSet { UserDefaults.standard.set(absServerVersion, forKey: "absServerVersion") }
+    }
+
     private static let homeAppsKey = "homeApps"
     private static let homeWidgetsKey = "homeWidgets"
 
@@ -38,6 +51,15 @@ final class AppSettings {
             homeWidgets = decoded
         } else {
             homeWidgets = [.nowPlaying, .navigation]
+        }
+        absServerURL = UserDefaults.standard.string(forKey: "absServerURL") ?? ""
+        absUsername = UserDefaults.standard.string(forKey: "absUsername") ?? ""
+        absToken = UserDefaults.standard.string(forKey: "absToken") ?? ""
+        absServerVersion = UserDefaults.standard.string(forKey: "absServerVersion") ?? ""
+
+        if let audiobooks = HomeAppCatalog.builtins.first(where: { $0.id == AppScreen.audiobooks.rawValue }),
+           !homeApps.contains(where: { $0.id == audiobooks.id }) {
+            homeApps.append(audiobooks)
         }
     }
 

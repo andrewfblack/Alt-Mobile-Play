@@ -19,6 +19,7 @@ struct RootView: View {
                     case .phone:       ContactsView()
                     case .messages:    QuickMessagesView()
                     case .podcasts:    PodcastsView()
+                    case .audiobooks:  AudiobooksView()
                     case .settings:    SettingsView()
                     }
                 }

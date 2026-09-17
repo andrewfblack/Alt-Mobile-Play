@@ -19,8 +19,24 @@ struct HomeWidgetView: View {
 private struct NowPlayingWidget: View {
     @Environment(AppRouter.self) private var router
     @State private var music = NowPlayingService.shared
+    @State private var audioBook = AudiobookPlayerService.shared
 
     var body: some View {
+        Group {
+            if audioBook.hasContent {
+                audiobookLayout
+            } else {
+                musicLayout
+            }
+        }
+        .padding(14)
+        .contentShape(Rectangle())
+        .onTapGesture { router.navigate(to: audioBook.hasContent ? .audiobooks : .music) }
+    }
+
+    // MARK: - Apple Music
+
+    private var musicLayout: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("APPLE MUSIC")
                 .font(CarTheme.rounded(10, .semibold))
@@ -52,9 +68,56 @@ private struct NowPlayingWidget: View {
 
             controls
         }
-        .padding(14)
-        .contentShape(Rectangle())
-        .onTapGesture { router.navigate(to: .music) }
+    }
+
+    // MARK: - Audiobook
+
+    private var audiobookLayout: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("AUDIOBOOK")
+                .font(CarTheme.rounded(10, .semibold))
+                .foregroundStyle(CarTheme.accent)
+                .tracking(0.8)
+            GeometryReader { geo in
+                let side = max(0, min(geo.size.width, geo.size.height))
+                Group {
+                    if let img = audioBook.artwork {
+                        Image(uiImage: img)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                    } else {
+                        ZStack {
+                            CarTheme.accent.opacity(0.18)
+                            Image(systemName: "book.closed.fill")
+                                .font(.system(size: 40))
+                                .foregroundStyle(CarTheme.accent.opacity(0.5))
+                        }
+                    }
+                }
+                .frame(width: side, height: side)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .task { await audioBook.refreshArtwork() }
+            }
+            .frame(maxHeight: .infinity)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(audioBook.title)
+                    .font(CarTheme.rounded(19, .semibold))
+                    .foregroundStyle(CarTheme.primaryText)
+                    .lineLimit(2)
+                if !audioBook.author.isEmpty {
+                    Text(audioBook.author)
+                        .font(CarTheme.rounded(15))
+                        .foregroundStyle(CarTheme.secondaryText)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+
+            audiobookControls
+        }
     }
 
     @ViewBuilder
@@ -103,6 +166,36 @@ private struct NowPlayingWidget: View {
         .buttonStyle(.plain)
         .disabled(!music.hasContent)
         .opacity(music.hasContent ? 1 : 0.35)
+    }
+
+    private var audiobookControls: some View {
+        HStack(spacing: 26) {
+            Button { audioBook.skipBack() } label: {
+                Image(systemName: "gobackward.30")
+                    .font(.system(size: 22))
+                    .foregroundStyle(CarTheme.primaryText)
+                    .frame(width: 52, height: 44)
+            }
+            .accessibilityLabel("Back 30 seconds")
+            Button { audioBook.playPause() } label: {
+                Image(systemName: audioBook.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 28))
+                    .foregroundStyle(CarTheme.primaryText)
+                    .frame(width: 56, height: 44)
+            }
+            .accessibilityLabel(audioBook.isPlaying ? "Pause" : "Play")
+            Button { audioBook.skipForward() } label: {
+                Image(systemName: "goforward.30")
+                    .font(.system(size: 22))
+                    .foregroundStyle(CarTheme.primaryText)
+                    .frame(width: 52, height: 44)
+            }
+            .accessibilityLabel("Forward 30 seconds")
+        }
+        .frame(maxWidth: .infinity)
+        .buttonStyle(.plain)
+        .disabled(!audioBook.hasContent)
+        .opacity(audioBook.hasContent ? 1 : 0.35)
     }
 }
 

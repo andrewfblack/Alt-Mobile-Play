@@ -24,6 +24,19 @@
   <string>$(CURRENT_PROJECT_VERSION)</string>
   <key>LSRequiresIPhoneOS</key>
   <true/>
+  <key>NSSupportsLiveActivities</key>
+  <true/>
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>com.altmobileplay.altplay</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>altplay</string>
+      </array>
+    </dict>
+  </array>
   <key>LSApplicationQueriesSchemes</key>
   <array>
     <string>audible</string>

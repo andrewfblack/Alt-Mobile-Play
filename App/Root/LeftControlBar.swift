@@ -60,7 +60,7 @@ struct LeftControlBar: View {
             .foregroundStyle(CarTheme.primaryText)
             .frame(width: width * 0.52, height: width * 0.52)
             .background(Circle().fill(CarTheme.tile))
-            .overlay(Circle().strokeBorder(Color.white.opacity(0.12), lineWidth: 1))
+            .overlay(Circle().strokeBorder(CarTheme.primaryText.opacity(0.14), lineWidth: 1))
     }
 }
 

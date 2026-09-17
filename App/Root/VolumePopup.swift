@@ -40,10 +40,10 @@ struct VolumePopup: View {
             .frame(width: 460)
             .background(CarTheme.tile)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 24)
-                    .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
-            )
+.overlay(
+                    RoundedRectangle(cornerRadius: 24)
+                        .strokeBorder(CarTheme.primaryText.opacity(0.12), lineWidth: 1)
+                )
             .padding(.leading, barWidth)
         }
         .transition(.opacity)

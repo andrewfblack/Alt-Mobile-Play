@@ -69,5 +69,9 @@
   <string>AltPlay lets you control music playing from your Apple Music library while driving.</string>
   <key>NSContactsUsageDescription</key>
   <string>AltPlay uses your contacts so you can call someone or get directions to their address.</string>
+  <key>UIFileSharingEnabled</key>
+  <true/>
+  <key>LSSupportsOpeningDocumentsInPlace</key>
+  <true/>
 </dict>
 </plist>

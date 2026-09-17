@@ -4,9 +4,11 @@ private struct PodcastShow: Identifiable {
     let id = UUID()
     let title: String
     let host: String
-    let color: Color
+    let colorIndex: Int
     let icon: String
     let episodes: [PodcastEpisode]
+
+    var color: Color { CarTheme.palette[colorIndex % CarTheme.palette.count] }
 }
 
 private struct PodcastEpisode: Identifiable {
@@ -20,7 +22,7 @@ private let sampleShows: [PodcastShow] = [
     PodcastShow(
         title: "Morning Drive",
         host: "Sarah & James",
-        color: CarTheme.orange,
+        colorIndex: 4,
         icon: "sun.max.fill",
         episodes: [
             PodcastEpisode(title: "Traffic Update", duration: "12 min", progress: 0.6),
@@ -31,7 +33,7 @@ private let sampleShows: [PodcastShow] = [
     PodcastShow(
         title: "Tech Today",
         host: "Mike Chen",
-        color: CarTheme.accent,
+        colorIndex: 0,
         icon: "laptopcomputer",
         episodes: [
             PodcastEpisode(title: "AI in Cars", duration: "32 min", progress: 0.45),
@@ -42,7 +44,7 @@ private let sampleShows: [PodcastShow] = [
     PodcastShow(
         title: "True Crime Stories",
         host: "Jessica Miller",
-        color: CarTheme.red,
+        colorIndex: 1,
         icon: "eyebrow",
         episodes: [
             PodcastEpisode(title: "The Missing Case", duration: "45 min", progress: 0.2),
@@ -53,7 +55,7 @@ private let sampleShows: [PodcastShow] = [
     PodcastShow(
         title: "Comedy Hour",
         host: "Various",
-        color: CarTheme.purple,
+        colorIndex: 3,
         icon: "theatermasks.fill",
         episodes: [
             PodcastEpisode(title: "Best of 2024", duration: "55 min", progress: 0.0),

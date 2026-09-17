@@ -46,7 +46,7 @@ struct RootView: View {
                 }
             }
             .animation(.easeInOut(duration: 0.22), value: router.current)
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(ThemeManager.shared.scheme)
             .statusBarHidden(true)
             .persistentSystemOverlays(.hidden)
         }

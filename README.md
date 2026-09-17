@@ -2,8 +2,6 @@
 
 A CarPlay-style dashboard experience that runs directly on your iPhone. Landscape-only, dark UI, large touch targets, navigation with voice guidance, and music controls — all the CarPlay essentials without needing a car screen.
 
-> **Not for the App Store.** This app uses private Apple APIs and is built for personal use only. You will need a paid Apple Developer account ($99/year) to sign and install it.
-
 ---
 
 ## Features

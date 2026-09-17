@@ -43,7 +43,6 @@ private struct NowPlayingWidget: View {
             controls
         }
         .padding(14)
-        .tileBackground()
         .contentShape(Rectangle())
         .onTapGesture { router.navigate(to: .music) }
     }
@@ -131,7 +130,6 @@ private struct NavigationWidget: View {
                 .foregroundStyle(CarTheme.tertiaryText)
         }
         .padding(14)
-        .tileBackground()
         .contentShape(Rectangle())
         .onTapGesture { router.navigate(to: .navigation) }
     }
@@ -231,7 +229,6 @@ private struct MessagesWidget: View {
             }
         }
         .padding(14)
-        .tileBackground()
         .contentShape(Rectangle())
         .onTapGesture { router.navigate(to: .messages) }
     }

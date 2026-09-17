@@ -41,5 +41,7 @@ struct HomeScreenView: View {
             .buttonStyle(.plain)
             .padding(12)
         }
+        .tileBackground()
+        .contentShape(Rectangle())
     }
 }

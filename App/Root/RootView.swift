@@ -15,7 +15,7 @@ struct RootView: View {
                     switch router.current {
                     case .home:        HomeScreenView()
                     case .apps:        AppDrawerView()
-                    case .navigation:  NavigationView()
+                    case .navigation:  NavigationView(barWidth: barWidth)
                     case .music:       MusicView()
                     case .phone:       ContactsView()
                     case .messages:    QuickMessagesView()
@@ -25,7 +25,7 @@ struct RootView: View {
                 }
                 .id(router.current)
                 .transition(.opacity)
-                .padding(.leading, barWidth)
+                .padding(.leading, router.current == .navigation ? 0 : barWidth)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
                 LeftControlBar(

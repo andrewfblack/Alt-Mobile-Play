@@ -13,6 +13,8 @@ struct NavigationView: View {
     @State private var mapType: CarMapType = .standard
     @FocusState private var searchFocused: Bool
 
+    let barWidth: CGFloat
+
     var body: some View {
         GeometryReader { geo in
         ZStack(alignment: .topLeading) {
@@ -21,18 +23,19 @@ struct NavigationView: View {
 
             searchBar
                 .padding(.top, 14)
-                .padding(.horizontal, 16)
+                .padding(.leading, barWidth + 16)
+                .padding(.trailing, 16)
                 .frame(maxWidth: .infinity)
 
             if showResults {
                 resultsList
-                    .frame(width: min(560, geo.size.width - 32))
-                    .padding(.leading, 16)
+                    .frame(width: min(560, geo.size.width - barWidth - 32))
+                    .padding(.leading, barWidth + 16)
                     .padding(.top, 56)
             } else if isSearching || searchNotice != nil {
                 searchStatus
-                    .frame(width: min(560, geo.size.width - 32))
-                    .padding(.leading, 16)
+                    .frame(width: min(560, geo.size.width - barWidth - 32))
+                    .padding(.leading, barWidth + 16)
                     .padding(.top, 56)
             }
 
@@ -40,7 +43,8 @@ struct NavigationView: View {
                 VStack {
                     Spacer()
                     bottomBanner
-                        .padding(.horizontal, 16)
+                        .padding(.leading, barWidth + 16)
+                        .padding(.trailing, 16)
                         .padding(.bottom, 16)
                         .frame(maxWidth: .infinity)
                 }

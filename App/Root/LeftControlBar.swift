@@ -5,7 +5,6 @@ struct LeftControlBar: View {
     @Environment(AppRouter.self) private var router
     let width: CGFloat
     let onHome: () -> Void
-    let onVolume: () -> Void
 
     @State private var now = Date()
     private let clockTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -34,12 +33,6 @@ struct LeftControlBar: View {
             Spacer(minLength: 0)
 
             VStack(spacing: width * 0.20) {
-                Button(action: onVolume) {
-                    barIcon("speaker.wave.2.fill")
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Volume")
-
                 Button(action: onHome) {
                     barIcon(router.current == .home ? "square.grid.2x2.fill" : "house.fill")
                 }

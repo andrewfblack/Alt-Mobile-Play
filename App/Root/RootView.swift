@@ -2,7 +2,6 @@ import SwiftUI
 
 struct RootView: View {
     @Environment(AppRouter.self) private var router
-    @State private var showVolume = false
 
     var body: some View {
         GeometryReader { geo in
@@ -36,14 +35,9 @@ struct RootView: View {
                         } else {
                             router.navigate(to: .home)
                         }
-                    },
-                    onVolume: { showVolume = true }
+                    }
                 )
                 .ignoresSafeArea()
-
-                if showVolume {
-                    VolumePopup(isPresented: $showVolume, barWidth: barWidth)
-                }
             }
             .animation(.easeInOut(duration: 0.22), value: router.current)
             .preferredColorScheme(ThemeManager.shared.scheme)

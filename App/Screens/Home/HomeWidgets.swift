@@ -20,9 +20,14 @@ private struct NowPlayingWidget: View {
     @Environment(AppRouter.self) private var router
     @State private var music = NowPlayingService.shared
 
+    private let artworkHeight: CGFloat = 140
+
     var body: some View {
-        HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: 12) {
             artworkView
+
+            Spacer(minLength: 0)
+
             VStack(alignment: .leading, spacing: 5) {
                 Text("NOW PLAYING")
                     .font(CarTheme.rounded(10, .semibold))
@@ -39,7 +44,7 @@ private struct NowPlayingWidget: View {
                         .lineLimit(1)
                 }
             }
-            Spacer(minLength: 4)
+
             controls
         }
         .padding(14)
@@ -49,42 +54,44 @@ private struct NowPlayingWidget: View {
 
     @ViewBuilder
     private var artworkView: some View {
-        if let img = music.artwork {
-            Image(uiImage: img)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 56, height: 56)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        } else {
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(CarTheme.accent.opacity(0.18))
-                .frame(width: 56, height: 56)
-                .overlay {
+        Group {
+            if let img = music.artwork {
+                Image(uiImage: img)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                ZStack {
+                    CarTheme.accent.opacity(0.18)
                     Image(systemName: "music.note")
-                        .font(.system(size: 22))
+                        .font(.system(size: 40))
                         .foregroundStyle(CarTheme.accent.opacity(0.5))
                 }
+            }
         }
+        .frame(maxWidth: .infinity)
+        .frame(height: artworkHeight)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var controls: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 26) {
             Button { music.previous() } label: {
                 Image(systemName: "backward.fill")
-                    .font(.system(size: 18))
+                    .font(.system(size: 20))
                     .foregroundStyle(CarTheme.primaryText)
             }
             Button { music.playPause() } label: {
                 Image(systemName: music.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 22))
+                    .font(.system(size: 28))
                     .foregroundStyle(CarTheme.primaryText)
             }
             Button { music.next() } label: {
                 Image(systemName: "forward.fill")
-                    .font(.system(size: 18))
+                    .font(.system(size: 20))
                     .foregroundStyle(CarTheme.primaryText)
             }
         }
+        .frame(maxWidth: .infinity)
         .buttonStyle(.plain)
     }
 }

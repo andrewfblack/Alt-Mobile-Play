@@ -19,7 +19,8 @@ struct NavigationView: View {
         GeometryReader { geo in
         ZStack(alignment: .topLeading) {
             map
-                .ignoresSafeArea()
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .padding(12)
 
             searchBar
                 .padding(.top, 14)

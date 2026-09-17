@@ -28,7 +28,7 @@ struct LeftControlBar: View {
                 BarBattery(width: width)
                     .padding(.top, width * 0.04)
             }
-            .padding(.top, width * 0.18)
+            .padding(.top, width * 0.24)
 
             Spacer(minLength: 0)
 

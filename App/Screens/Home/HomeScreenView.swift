@@ -5,25 +5,25 @@ struct HomeScreenView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let slotWidth = (geo.size.width - 24) / 2
-            HStack(spacing: 24) {
+            let slotWidth = (geo.size.width - 16) / 2
+            HStack(spacing: 16) {
                 widgetSlot(0)
                     .frame(width: slotWidth, height: geo.size.height)
                 widgetSlot(1)
                     .frame(width: slotWidth, height: geo.size.height)
             }
         }
-        .padding(24)
+        .padding(16)
         .onAppear { settings.apply() }
     }
 
     private func widgetSlot(_ index: Int) -> some View {
         let kind = settings.homeWidgets.count > index ? settings.homeWidgets[index] : .nowPlaying
-        return ZStack(alignment: .topTrailing) {
-            HomeWidgetView(kind: kind)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-
-            Menu {
+        return HomeWidgetView(kind: kind)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .tileBackground()
+            .contentShape(RoundedRectangle(cornerRadius: 24))
+            .contextMenu {
                 ForEach(HomeWidgetKind.allCases) { option in
                     Button {
                         settings.setWidget(option, at: index)
@@ -31,17 +31,7 @@ struct HomeScreenView: View {
                         Label(option.title, systemImage: option == kind ? "checkmark" : option.icon)
                     }
                 }
-            } label: {
-                Image(systemName: "arrow.left.arrow.right.circle.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(CarTheme.tertiaryText)
-                    .frame(width: 34, height: 34)
-                    .background(Circle().fill(CarTheme.background.opacity(0.55)))
             }
-            .buttonStyle(.plain)
-            .padding(12)
-        }
-        .tileBackground()
-        .contentShape(Rectangle())
+            .accessibilityHint("Touch and hold to change this widget")
     }
 }

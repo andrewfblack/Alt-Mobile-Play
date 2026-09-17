@@ -20,19 +20,22 @@ private struct NowPlayingWidget: View {
     @Environment(AppRouter.self) private var router
     @State private var music = NowPlayingService.shared
 
-    private let artworkHeight: CGFloat = 140
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            artworkView
+        VStack(alignment: .leading, spacing: 8) {
+            Text("NOW PLAYING")
+                .font(CarTheme.rounded(10, .semibold))
+                .foregroundStyle(CarTheme.accent)
+                .tracking(0.8)
+            GeometryReader { geo in
+                let side = max(0, min(geo.size.width, geo.size.height))
+                artworkView
+                    .frame(width: side, height: side)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .frame(maxHeight: .infinity)
 
-            Spacer(minLength: 0)
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text("NOW PLAYING")
-                    .font(CarTheme.rounded(10, .semibold))
-                    .foregroundStyle(CarTheme.accent)
-                    .tracking(0.8)
+            VStack(alignment: .leading, spacing: 4) {
                 Text(music.title)
                     .font(CarTheme.rounded(19, .semibold))
                     .foregroundStyle(CarTheme.primaryText)
@@ -44,6 +47,8 @@ private struct NowPlayingWidget: View {
                         .lineLimit(1)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
 
             controls
         }
@@ -58,7 +63,7 @@ private struct NowPlayingWidget: View {
             if let img = music.artwork {
                 Image(uiImage: img)
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
+                    .aspectRatio(contentMode: .fit)
             } else {
                 ZStack {
                     CarTheme.accent.opacity(0.18)
@@ -68,9 +73,6 @@ private struct NowPlayingWidget: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: artworkHeight)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var controls: some View {
@@ -79,17 +81,23 @@ private struct NowPlayingWidget: View {
                 Image(systemName: "backward.fill")
                     .font(.system(size: 20))
                     .foregroundStyle(CarTheme.primaryText)
+                    .frame(width: 52, height: 44)
             }
+            .accessibilityLabel("Previous track")
             Button { music.playPause() } label: {
                 Image(systemName: music.isPlaying ? "pause.fill" : "play.fill")
                     .font(.system(size: 28))
                     .foregroundStyle(CarTheme.primaryText)
+                    .frame(width: 56, height: 44)
             }
+            .accessibilityLabel(music.isPlaying ? "Pause" : "Play")
             Button { music.next() } label: {
                 Image(systemName: "forward.fill")
                     .font(.system(size: 20))
                     .foregroundStyle(CarTheme.primaryText)
+                    .frame(width: 52, height: 44)
             }
+            .accessibilityLabel("Next track")
         }
         .frame(maxWidth: .infinity)
         .buttonStyle(.plain)
@@ -102,48 +110,100 @@ private struct NavigationWidget: View {
     @Environment(AppRouter.self) private var router
     @State private var nav = NavigationState.shared
     @State private var contacts = ContactsService.shared
+    @State private var camera: MapCameraPosition = .userLocation(fallback: .automatic)
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "car.fill")
-                .font(.system(size: 22))
+        VStack(alignment: .leading, spacing: 8) {
+            Text("NAVIGATION")
+                .font(CarTheme.rounded(10, .semibold))
                 .foregroundStyle(CarTheme.accent)
-                .frame(width: 44, height: 44)
-                .background(CarTheme.accent.opacity(0.12))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .tracking(0.8)
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text("NAVIGATION")
-                    .font(CarTheme.rounded(10, .semibold))
-                    .foregroundStyle(CarTheme.accent)
-                    .tracking(0.8)
+            ZStack {
+                Map(position: $camera, interactionModes: []) {
+                    UserAnnotation()
+                    if nav.isNavigating, let route = nav.route {
+                        MapPolyline(route.polyline)
+                            .stroke(CarTheme.accent, lineWidth: 4)
+                    }
+                }
+                .mapStyle(.standard(elevation: .flat, pointsOfInterest: .excludingAll))
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
 
+                if !nav.locationAuthorized {
+                    Button(action: enableLocation) {
+                        Label("Enable location", systemImage: "location.fill")
+                            .font(CarTheme.rounded(15, .semibold))
+                            .padding(12)
+                            .background(CarTheme.tile, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(CarTheme.primaryText)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
                 if nav.isNavigating {
-                    Text(nav.destinationTitle)
+                    Text(nav.nextInstruction.isEmpty ? "Continue on route" : nav.nextInstruction)
                         .font(CarTheme.rounded(19, .semibold))
                         .foregroundStyle(CarTheme.primaryText)
+                        .lineLimit(2)
+                    Text(nav.destinationTitle)
+                        .font(CarTheme.rounded(15))
+                        .foregroundStyle(CarTheme.secondaryText)
                         .lineLimit(1)
                     Text(nav.routeSummary)
                         .font(CarTheme.rounded(15))
                         .foregroundStyle(CarTheme.secondaryText)
                         .lineLimit(1)
                 } else {
+                    Text("Where to?")
+                        .font(CarTheme.rounded(19, .semibold))
+                        .foregroundStyle(CarTheme.primaryText)
                     quickNavButtons
                 }
             }
-            Spacer(minLength: 4)
-            Image(systemName: "chevron.right")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(CarTheme.tertiaryText)
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(14)
         .contentShape(Rectangle())
         .onTapGesture { router.navigate(to: .navigation) }
+        .onAppear { nav.requestLocationPermission() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                nav.requestLocationPermission()
+                camera = .userLocation(fallback: .automatic)
+            }
+        }
+    }
+
+    private func enableLocation() {
+        let status = CLLocationManager().authorizationStatus
+        if status == .denied || status == .restricted {
+            if let url = URL(string: UIApplication.openSettingsURLString) {
+                UIApplication.shared.open(url)
+            }
+        } else {
+            nav.requestLocationPermission()
+        }
     }
 
     @ViewBuilder
     private var quickNavButtons: some View {
         HStack(spacing: 8) {
+            Button { router.navigate(to: .navigation) } label: {
+                Label("Search", systemImage: "magnifyingglass")
+                    .font(CarTheme.rounded(14, .medium))
+                    .padding(.horizontal, 10)
+                    .frame(minHeight: 44)
+                    .background(CarTheme.accent.opacity(0.15), in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(CarTheme.primaryText)
             if let home = contacts.homeAddress() {
                 suggestionChip(label: "Home", address: home)
             }
@@ -161,7 +221,7 @@ private struct NavigationWidget: View {
                 .font(CarTheme.rounded(14, .medium))
                 .foregroundStyle(CarTheme.primaryText)
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
+                .frame(minHeight: 44)
                 .background(CarTheme.accent.opacity(0.15))
                 .clipShape(Capsule())
         }

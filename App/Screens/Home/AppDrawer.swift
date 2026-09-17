@@ -1,7 +1,6 @@
 import SwiftUI
 
-struct AppDrawer: View {
-    @Binding var isPresented: Bool
+struct AppDrawerView: View {
     @Environment(AppRouter.self) private var router
     @State private var settings = AppSettings.shared
     @State private var page = 0
@@ -23,79 +22,53 @@ struct AppDrawer: View {
     var body: some View {
         GeometryReader { geo in
             let outer: CGFloat = 24
-            let panelPadding: CGFloat = 20
-            let headerHeight: CGFloat = 44
-            let dotsHeight: CGFloat = pages.count > 1 ? 20 : 0
-            let vstackGaps: CGFloat = pages.count > 1 ? 28 : 14
-            let maxPanelWidth = min(geo.size.width - outer * 2, 640)
-            let tileByWidth = (maxPanelWidth - panelPadding * 2 - spacing * CGFloat(columns - 1)) / CGFloat(columns)
-            let tileByHeight = (geo.size.height - outer * 2 - panelPadding * 2 - headerHeight - dotsHeight - vstackGaps - spacing * CGFloat(rows - 1)) / CGFloat(rows)
-            let tile = max(72, min(tileByWidth, tileByHeight))
-            let panelWidth = tile * CGFloat(columns) + spacing * CGFloat(columns - 1) + panelPadding * 2
+            let topPad: CGFloat = 16
+            let titleHeight: CGFloat = 38
+            let dotsHeight: CGFloat = pages.count > 1 ? 22 : 0
+            let controlsGap: CGFloat = pages.count > 1 ? 18 : 0
+            let availH = geo.size.height - topPad - titleHeight - dotsHeight - controlsGap
+            let tileByWidth = (geo.size.width - outer * 2 - spacing * CGFloat(columns - 1)) / CGFloat(columns)
+            let tileByHeight = (availH - spacing * CGFloat(rows - 1)) / CGFloat(rows)
+            let tile = max(64, min(tileByWidth, tileByHeight))
             let gridHeight = tile * CGFloat(rows) + spacing * CGFloat(rows - 1)
 
-            ZStack(alignment: .bottomLeading) {
-                Color.black.opacity(0.55)
-                    .ignoresSafeArea()
-                    .onTapGesture { isPresented = false }
+            VStack(spacing: 0) {
+                topTitle("Apps")
+                    .padding(.horizontal, outer)
+                    .padding(.top, topPad)
+                    .frame(height: topPad + titleHeight)
 
-                VStack(spacing: 14) {
-                    HStack {
-                        Text("Apps")
-                            .font(CarTheme.rounded(22, .semibold))
-                            .foregroundStyle(CarTheme.primaryText)
-                        Spacer()
-                        Button { isPresented = false } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(CarTheme.primaryText)
-                                .frame(width: 36, height: 36)
-                                .background(Circle().fill(CarTheme.field.opacity(0.85)))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    .frame(height: headerHeight)
-
-                    ZStack {
-                        TabView(selection: $page) {
-                            ForEach(pages.indices, id: \.self) { index in
-                                grid(pages[index], tile: tile).tag(index)
-                            }
-                        }
-                        .tabViewStyle(.page(indexDisplayMode: .never))
-
-                        if pages.count > 1 {
-                            HStack {
-                                pageArrow("chevron.left", enabled: page > 0) { page -= 1 }
-                                Spacer()
-                                pageArrow("chevron.right", enabled: page < pages.count - 1) { page += 1 }
-                            }
+                ZStack {
+                    TabView(selection: $page) {
+                        ForEach(pages.indices, id: \.self) { index in
+                            grid(pages[index], tile: tile).tag(index)
                         }
                     }
-                    .frame(height: gridHeight)
+                    .tabViewStyle(.page(indexDisplayMode: .never))
 
                     if pages.count > 1 {
-                        HStack(spacing: 6) {
-                            ForEach(pages.indices, id: \.self) { index in
-                                Circle()
-                                    .fill(index == page ? CarTheme.primaryText : CarTheme.tertiaryText)
-                                    .frame(width: 7, height: 7)
-                            }
+                        HStack {
+                            pageArrow("chevron.left", enabled: page > 0) { page -= 1 }
+                            Spacer()
+                            pageArrow("chevron.right", enabled: page < pages.count - 1) { page += 1 }
                         }
-                        .frame(height: dotsHeight)
                     }
                 }
-                .padding(panelPadding)
-                .frame(width: panelWidth)
-                .background(CarTheme.tile.opacity(0.98))
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24)
-                        .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
-                )
-                .padding(outer)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .frame(height: gridHeight)
+
+                if pages.count > 1 {
+                    HStack(spacing: 6) {
+                        ForEach(pages.indices, id: \.self) { index in
+                            Circle()
+                                .fill(index == page ? CarTheme.primaryText : CarTheme.tertiaryText)
+                                .frame(width: 7, height: 7)
+                        }
+                    }
+                    .padding(.top, controlsGap)
+                    .frame(height: dotsHeight)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .onChange(of: pages.count) { _, count in
             if page >= count { page = max(0, count - 1) }
@@ -149,7 +122,6 @@ struct AppDrawer: View {
     }
 
     private func open(_ app: HomeApp) {
-        isPresented = false
         if let raw = app.screen, let screen = AppScreen(rawValue: raw) {
             router.navigate(to: screen)
         } else {

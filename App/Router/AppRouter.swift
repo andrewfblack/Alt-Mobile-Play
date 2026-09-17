@@ -3,6 +3,7 @@ import Observation
 
 enum AppScreen: String, Hashable {
     case home
+    case apps
     case navigation
     case music
     case phone

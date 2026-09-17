@@ -16,7 +16,12 @@ final class AppSettings {
         didSet { saveHomeApps() }
     }
 
+    var homeWidgets: [HomeWidgetKind] {
+        didSet { saveHomeWidgets() }
+    }
+
     private static let homeAppsKey = "homeApps"
+    private static let homeWidgetsKey = "homeWidgets"
 
     private init() {
         keepAwake = UserDefaults.standard.object(forKey: "keepAwake") as? Bool ?? true
@@ -27,11 +32,24 @@ final class AppSettings {
         } else {
             homeApps = HomeAppCatalog.builtins
         }
+        if let data = UserDefaults.standard.data(forKey: Self.homeWidgetsKey),
+           let decoded = try? JSONDecoder().decode([HomeWidgetKind].self, from: data),
+           decoded.count == 2 {
+            homeWidgets = decoded
+        } else {
+            homeWidgets = [.nowPlaying, .navigation]
+        }
     }
 
     private func saveHomeApps() {
         if let data = try? JSONEncoder().encode(homeApps) {
             UserDefaults.standard.set(data, forKey: Self.homeAppsKey)
+        }
+    }
+
+    private func saveHomeWidgets() {
+        if let data = try? JSONEncoder().encode(homeWidgets) {
+            UserDefaults.standard.set(data, forKey: Self.homeWidgetsKey)
         }
     }
 
@@ -51,6 +69,15 @@ final class AppSettings {
             removeFromHome(app)
         } else {
             addToHome(app)
+        }
+    }
+
+    func setWidget(_ kind: HomeWidgetKind, at index: Int) {
+        guard index >= 0, index < homeWidgets.count else { return }
+        if let other = homeWidgets.firstIndex(of: kind), other != index {
+            homeWidgets.swapAt(index, other)
+        } else {
+            homeWidgets[index] = kind
         }
     }
 

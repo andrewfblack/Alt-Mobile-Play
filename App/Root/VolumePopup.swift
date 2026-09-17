@@ -2,6 +2,7 @@ import SwiftUI
 
 struct VolumePopup: View {
     @Binding var isPresented: Bool
+    let barWidth: CGFloat
 
     var body: some View {
         ZStack {
@@ -43,7 +44,7 @@ struct VolumePopup: View {
                 RoundedRectangle(cornerRadius: 24)
                     .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
             )
-            .padding(.leading, LeftControlBar.width)
+            .padding(.leading, barWidth)
         }
         .transition(.opacity)
     }

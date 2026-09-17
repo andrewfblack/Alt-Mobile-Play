@@ -201,9 +201,10 @@ final class ThemeManager {
     }
 
     private init() {
-        customThemes = Self.loadCustomThemes()
+        let loaded = Self.loadCustomThemes()
+        customThemes = loaded
         let savedID = UserDefaults.standard.string(forKey: "themeID")
-        let all = Self.builtins + customThemes
+        let all = Self.builtins + loaded
         if let theme = all.first(where: { $0.id == savedID }) {
             current = theme
         } else {

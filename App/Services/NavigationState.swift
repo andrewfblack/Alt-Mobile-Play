@@ -29,6 +29,8 @@ final class NavigationState: NSObject, CLLocationManagerDelegate {
     var voiceEnabled: Bool
     var locationAuthorized = false
     var routingError = false
+    var currentCoordinate: CLLocationCoordinate2D?
+    var travelHeading: CLLocationDirection = 0
 
     @ObservationIgnored private let locationManager = CLLocationManager()
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
@@ -130,8 +132,13 @@ final class NavigationState: NSObject, CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         Task { @MainActor in
-            guard isNavigating, let route, let loc = locations.last,
-                  currentStep < route.steps.count else { return }
+            guard let loc = locations.last else { return }
+            currentCoordinate = loc.coordinate
+            if loc.course >= 0 {
+                travelHeading = loc.course
+            }
+
+            guard isNavigating, let route, currentStep < route.steps.count else { return }
             let end = stepEndpoint(route.steps[currentStep])
             let dist = loc.distance(from: CLLocation(latitude: end.latitude, longitude: end.longitude))
             if dist < 50 { advance() }

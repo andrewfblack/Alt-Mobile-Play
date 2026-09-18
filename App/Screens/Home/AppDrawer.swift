@@ -41,7 +41,9 @@ struct AppDrawerView: View {
                 ZStack {
                     TabView(selection: $page) {
                         ForEach(pages.indices, id: \.self) { index in
-                            grid(pages[index], tile: tile).tag(index)
+                            grid(pages[index], tile: tile)
+                                .frame(maxHeight: .infinity, alignment: .top)
+                                .tag(index)
                         }
                     }
                     .tabViewStyle(.page(indexDisplayMode: .never))

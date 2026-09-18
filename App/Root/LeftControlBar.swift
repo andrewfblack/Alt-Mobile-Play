@@ -37,7 +37,7 @@ struct LeftControlBar: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(router.current == .home ? "Apps" : "Home")
-            .padding(.bottom, width * 0.15)
+            .padding(.bottom, width * 0.30)
         }
         .frame(width: width)
         .frame(maxHeight: .infinity)

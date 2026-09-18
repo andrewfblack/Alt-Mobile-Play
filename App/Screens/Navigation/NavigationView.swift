@@ -22,22 +22,24 @@ struct NavigationView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 .padding(12)
 
-            searchBar
-                .padding(.top, 14)
-                .padding(.leading, barWidth + 16)
-                .padding(.trailing, 16)
-                .frame(maxWidth: .infinity)
+            if !nav.isNavigating {
+                searchBar
+                    .padding(.top, 14)
+                    .padding(.leading, barWidth + 16)
+                    .padding(.trailing, 16)
+                    .frame(maxWidth: .infinity)
 
-            if showResults {
-                resultsList
-                    .frame(width: min(560, geo.size.width - barWidth - 32))
-                    .padding(.leading, barWidth + 16)
-                    .padding(.top, 56)
-            } else if isSearching || searchNotice != nil {
-                searchStatus
-                    .frame(width: min(560, geo.size.width - barWidth - 32))
-                    .padding(.leading, barWidth + 16)
-                    .padding(.top, 56)
+                if showResults {
+                    resultsList
+                        .frame(width: min(560, geo.size.width - barWidth - 32))
+                        .padding(.leading, barWidth + 16)
+                        .padding(.top, 56)
+                } else if isSearching || searchNotice != nil {
+                    searchStatus
+                        .frame(width: min(560, geo.size.width - barWidth - 32))
+                        .padding(.leading, barWidth + 16)
+                        .padding(.top, 56)
+                }
             }
 
             if nav.target != nil && !showResults {
@@ -52,8 +54,8 @@ struct NavigationView: View {
             }
 
             mapControls
-                .padding(16)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                .padding(.trailing, 16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
         }
         .onAppear {
             nav.requestLocationPermission()
@@ -63,8 +65,8 @@ struct NavigationView: View {
             }
         }
         .task(id: nav.isNavigating) {
-            if nav.isNavigating, let route = nav.route {
-                position = .region(MKCoordinateRegion(route.polyline.boundingMapRect))
+            if nav.isNavigating {
+                position = .userLocation(followsHeading: false, fallback: .automatic)
             }
         }
         }
@@ -75,7 +77,19 @@ struct NavigationView: View {
     @ViewBuilder
     private var map: some View {
         Map(position: $position, interactionModes: [.pan, .zoom, .rotate]) {
-            UserAnnotation()
+            if nav.isNavigating, let coordinate = nav.currentCoordinate {
+                Annotation("Current location", coordinate: coordinate) {
+                    Image(systemName: "location.north.fill")
+                        .font(.system(size: 30, weight: .bold))
+                        .foregroundStyle(CarTheme.accent)
+                        .rotationEffect(.degrees(nav.travelHeading))
+                        .padding(5)
+                        .background(Circle().fill(.white))
+                        .shadow(color: .black.opacity(0.35), radius: 4, y: 2)
+                }
+            } else {
+                UserAnnotation()
+            }
 
             if let target = nav.target {
                 Annotation(target.title, coordinate: target.coordinate) {
@@ -291,8 +305,7 @@ struct NavigationView: View {
     private var mapControls: some View {
         VStack(spacing: 14) {
             Button {
-                if let r = position.region { zoom(to: r.center) }
-                else if let loc = nav.target?.coordinate { zoom(to: loc) }
+                position = .userLocation(followsHeading: false, fallback: .automatic)
             } label: {
                 controlIcon("location.fill")
             }
@@ -307,11 +320,13 @@ struct NavigationView: View {
                 controlIcon("map")
             }
 
-            Button { zoom(by: 0.5) } label: {
-                controlIcon("plus.magnifyingglass")
-            }
-            Button { zoom(by: 2.0) } label: {
-                controlIcon("minus.magnifyingglass")
+            if nav.target == nil {
+                Button { zoom(by: 0.5) } label: {
+                    controlIcon("plus.magnifyingglass")
+                }
+                Button { zoom(by: 2.0) } label: {
+                    controlIcon("minus.magnifyingglass")
+                }
             }
         }
     }

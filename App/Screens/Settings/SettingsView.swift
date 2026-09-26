@@ -25,10 +25,14 @@ struct SettingsView: View {
                     appearanceSettings
                 case .audiobookshelf:
                     audiobookshelfSettings
+                case .traffic:
+                    trafficSettings
                 }
             }
             .transition(.opacity)
         }
+        .frame(maxWidth: 840)
+        .frame(maxWidth: .infinity)
         .animation(.easeInOut(duration: 0.18), value: page)
         .onAppear {
             settings.voiceGuidance = NavigationState.shared.voiceEnabled
@@ -112,6 +116,19 @@ struct SettingsView: View {
                         }
                     )
                 )
+                settingDivider
+                SettingToggle(
+                    icon: "arrow.triangle.branch",
+                    title: "Automatic Rerouting",
+                    subtitle: "Calculate a new route after leaving the current one",
+                    isOn: Binding(
+                        get: { settings.automaticRerouting },
+                        set: { enabled in
+                            settings.automaticRerouting = enabled
+                            NavigationState.shared.setAutomaticRerouting(enabled)
+                        }
+                    )
+                )
             }
 
             section("Services") {
@@ -122,13 +139,21 @@ struct SettingsView: View {
                 ) {
                     page = .audiobookshelf
                 }
+                settingDivider
+                navigationRow(
+                    icon: "car.side.fill",
+                    title: "Traffic Data",
+                    subtitle: wazeTrafficSummary
+                ) {
+                    page = .traffic
+                }
             }
 
             section("About") {
                 SettingRow(
                     icon: "info.circle",
                     title: "AltPlay",
-                    subtitle: "CarPlay for your iPhone"
+                    subtitle: "CarPlay for your \(deviceName)"
                 )
                 settingDivider
                 SettingRow(
@@ -179,7 +204,7 @@ struct SettingsView: View {
                 SettingRow(
                     icon: "doc.text.fill",
                     title: "customThemes.json",
-                    subtitle: "Files > On My iPhone > AltPlay"
+                    subtitle: "Files > On My \(deviceName) > AltPlay"
                 )
                 settingDivider
                 Button {
@@ -279,6 +304,52 @@ struct SettingsView: View {
                     .disabled(absConnecting)
                     .opacity(absConnecting ? 0.7 : 1)
                 }
+            }
+        }
+    }
+
+    private var trafficSettings: some View {
+        settingsScroll {
+            section("WazeAPI") {
+                SettingToggle(
+                    icon: "car.side.fill",
+                    title: "Traffic Overlay",
+                    subtitle: "Send the active route to WazeAPI for live alerts and jams",
+                    isOn: $settings.wazeTrafficEnabled
+                )
+                settingDivider
+                settingBoundSecureField(
+                    icon: "key.fill",
+                    title: "API Key",
+                    placeholder: "wz_live_...",
+                    text: Binding(
+                        get: { settings.wazeAPIKey },
+                        set: { settings.setWazeAPIKey($0) }
+                    )
+                )
+            }
+
+            section("Data Region") {
+                Picker("Region", selection: $settings.wazeCountry) {
+                    Text("USA").tag("usa")
+                    Text("Europe").tag("eur")
+                    Text("Australia").tag("aus")
+                }
+                .pickerStyle(.segmented)
+                .padding(14)
+            }
+
+            section("About This Service") {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("During active guidance, AltPlay sends a sampled copy of your route coordinates to WazeAPI every five minutes. WazeAPI is a paid third-party service, is not affiliated with Waze or Google, and each request uses your account quota.")
+                        .font(CarTheme.rounded(14))
+                        .foregroundStyle(CarTheme.secondaryText)
+                    Link("Get a WazeAPI key", destination: URL(string: "https://wazeapi.com/signup")!)
+                        .font(CarTheme.rounded(16, .semibold))
+                        .foregroundStyle(CarTheme.accent)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
             }
         }
     }
@@ -483,8 +554,42 @@ struct SettingsView: View {
         .padding(14)
     }
 
+    private func settingBoundSecureField(
+        icon: String,
+        title: String,
+        placeholder: String,
+        text: Binding<String>
+    ) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundStyle(CarTheme.accent)
+                .frame(width: 40, height: 40)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(CarTheme.rounded(14, .medium))
+                    .foregroundStyle(CarTheme.secondaryText)
+                SecureField(placeholder, text: text)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .font(CarTheme.rounded(18, .semibold))
+                    .foregroundStyle(CarTheme.primaryText)
+            }
+        }
+        .padding(14)
+    }
+
     private var audiobookshelfSummary: String {
         absService.isConnected ? "Connected as \(settings.absUsername)" : "Configure server and sign in"
+    }
+
+    private var deviceName: String {
+        UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+    }
+
+    private var wazeTrafficSummary: String {
+        if settings.wazeAPIKey.isEmpty { return "Configure a WazeAPI key" }
+        return settings.wazeTrafficEnabled ? "Enabled for navigation routes" : "Configured, currently off"
     }
 
     private var absServerVersionText: String {
@@ -538,12 +643,14 @@ private enum SettingsPage: Equatable {
     case main
     case appearance
     case audiobookshelf
+    case traffic
 
     var title: String {
         switch self {
         case .main: "Settings"
         case .appearance: "Appearance"
         case .audiobookshelf: "Audiobookshelf"
+        case .traffic: "Traffic Data"
         }
     }
 }

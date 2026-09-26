@@ -1,6 +1,6 @@
-# AltPlay — CarPlay for Your iPhone
+# AltPlay — CarPlay for Your iPhone or iPad
 
-A CarPlay-style dashboard experience that runs directly on your iPhone. Landscape-only, dark UI, large touch targets, navigation with voice guidance, and music controls — all the CarPlay essentials without needing a car screen.
+A CarPlay-style dashboard experience that runs directly on your iPhone or iPad. Landscape-only, dark UI, large touch targets, navigation with voice guidance, and music controls — all the CarPlay essentials without needing a car screen.
 
 ---
 
@@ -22,7 +22,7 @@ A CarPlay-style dashboard experience that runs directly on your iPhone. Landscap
 
 - **macOS** — GitHub Actions builds it for you, no Mac needed
 - **Paid Apple Developer account** — to sign and install on your device via TestFlight
-- **iPhone running iOS 17+**
+- **iPhone or iPad running iOS/iPadOS 17+**
 - **XcodeGen** — generates the `.xcodeproj` from `project.yml` (installed automatically in CI)
 
 ---
@@ -63,12 +63,12 @@ Alt-Mobile-Play/
 
 ### Option A: TestFlight (recommended — no Mac needed)
 
-Every push to `main` validates the build on a macOS CI runner. To build and install on your iPhone:
+Every push to `main` validates the build on a macOS CI runner. To build and install on your iPhone or iPad:
 
 #### 1. One-time setup (Developer Portal)
 
 1. Go to [developer.apple.com/account](https://developer.apple.com/account)
-2. **Register your iPhone UDID** (Settings → General → About → copy the identifier)
+2. **Register your device UDID** (Settings → General → About → copy the identifier)
 3. Create an **App ID** for the app:
    - Go to Identifiers → + → App IDs → App
    - Bundle ID: `com.altmobileplay.altplay` (must match `project.yml`)
@@ -110,7 +110,7 @@ Fastlane will:
 3. Build and archive the app
 4. Upload to TestFlight
 
-Once uploaded, install via the **TestFlight app** on your iPhone.
+Once uploaded, install via the **TestFlight app** on your iPhone or iPad.
 
 ### Option B: Simulator-only (no signing needed)
 

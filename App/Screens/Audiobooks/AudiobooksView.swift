@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 enum AudiobooksSection: String, CaseIterable, Identifiable {
     case nowPlaying = "Now Playing"
@@ -10,18 +11,20 @@ enum AudiobooksSection: String, CaseIterable, Identifiable {
 struct AudiobooksView: View {
     @Environment(AppRouter.self) private var router
     @State private var absService = AudiobookshelfService.shared
+    @State private var localLibrary = LocalAudiobookLibrary.shared
     @State private var player = AudiobookPlayerService.shared
+    @State private var source: AudiobookSource?
     @State private var section: AudiobooksSection = .nowPlaying
     @State private var selectedLibrary: String?
     @State private var libraryItems: [ABSLibraryItem] = []
+    @State private var showFileImporter = false
+    @State private var importError: String?
 
     var body: some View {
         VStack(spacing: 8) {
-            topTitle("Audiobooks")
-                .padding(.horizontal, 24)
-                .padding(.top, 16)
+            header
 
-            if absService.isConnected {
+            if source == .local || (source == .audiobookshelf && absService.isConnected) {
                 Picker("", selection: $section) {
                     ForEach(AudiobooksSection.allCases) { s in
                         Text(s.rawValue).tag(s)
@@ -34,7 +37,29 @@ struct AudiobooksView: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .onAppear { load() }
+        .fileImporter(
+            isPresented: $showFileImporter,
+            allowedContentTypes: [.audio],
+            allowsMultipleSelection: true
+        ) { result in
+            switch result {
+            case .success(let urls):
+                importError = nil
+                Task {
+                    do {
+                        try await localLibrary.importFiles(urls)
+                    } catch {
+                        importError = error.localizedDescription
+                    }
+                }
+            case .failure(let error):
+                importError = error.localizedDescription
+            }
+        }
+        .onChange(of: source) { _, newSource in
+            section = newSource == .local && player.source != .local ? .library : .nowPlaying
+            if newSource == .audiobookshelf { load() }
+        }
         .onChange(of: absService.libraries) { _, libs in
             if selectedLibrary == nil, let first = libs.first {
                 selectedLibrary = first.id
@@ -42,6 +67,37 @@ struct AudiobooksView: View {
             refreshLibraryItems()
         }
         .onChange(of: selectedLibrary) { _, _ in refreshLibraryItems() }
+    }
+
+    private var header: some View {
+        HStack(spacing: 10) {
+            if source != nil {
+                Button { source = nil } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(CarTheme.primaryText)
+                        .frame(width: 40, height: 40)
+                        .background(CarTheme.field)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Choose audiobook source")
+            }
+            Text(sourceTitle)
+                .font(CarTheme.rounded(30, .bold))
+                .foregroundStyle(CarTheme.primaryText)
+            Spacer()
+        }
+        .padding(.horizontal, 24)
+        .padding(.top, 16)
+    }
+
+    private var sourceTitle: String {
+        switch source {
+        case .audiobookshelf: "Audiobookshelf"
+        case .local: "Local Audiobooks"
+        case nil: "Audiobooks"
+        }
     }
 
     private func load() {
@@ -65,6 +121,18 @@ struct AudiobooksView: View {
 
     @ViewBuilder
     private var content: some View {
+        switch source {
+        case nil:
+            sourceChooser
+        case .audiobookshelf:
+            audiobookshelfContent
+        case .local:
+            localContent
+        }
+    }
+
+    @ViewBuilder
+    private var audiobookshelfContent: some View {
         if !absService.isConnected {
             connectPrompt
         } else if absService.libraries.isEmpty {
@@ -81,6 +149,74 @@ struct AudiobooksView: View {
         }
     }
 
+    @ViewBuilder
+    private var localContent: some View {
+        switch section {
+        case .nowPlaying: nowPlayingView
+        case .library: localLibraryView
+        }
+    }
+
+    private var sourceChooser: some View {
+        GeometryReader { geo in
+            let width = min(360, (geo.size.width - 72) / 2)
+            HStack(spacing: 24) {
+                sourceCard(
+                    source: .audiobookshelf,
+                    icon: "server.rack",
+                    title: "Audiobookshelf",
+                    subtitle: absService.isConnected
+                        ? "Browse your connected server"
+                        : "Connect to your self-hosted library"
+                )
+                .frame(width: width)
+
+                sourceCard(
+                    source: .local,
+                    icon: "folder.fill",
+                    title: "Local Audiobooks",
+                    subtitle: localLibrary.books.isEmpty
+                        ? "Import audio files from Files"
+                        : "\(localLibrary.books.count) book\(localLibrary.books.count == 1 ? "" : "s") available"
+                )
+                .frame(width: width)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(24)
+        }
+    }
+
+    private func sourceCard(
+        source cardSource: AudiobookSource,
+        icon: String,
+        title: String,
+        subtitle: String
+    ) -> some View {
+        Button { source = cardSource } label: {
+            VStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.system(size: 42, weight: .semibold))
+                    .foregroundStyle(CarTheme.accent)
+                    .frame(height: 52)
+                Text(title)
+                    .font(CarTheme.rounded(22, .semibold))
+                    .foregroundStyle(CarTheme.primaryText)
+                Text(subtitle)
+                    .font(CarTheme.rounded(15))
+                    .foregroundStyle(CarTheme.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                Image(systemName: "chevron.right.circle.fill")
+                    .font(.system(size: 24))
+                    .foregroundStyle(CarTheme.accent)
+            }
+            .padding(22)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .tileBackground()
+        }
+        .buttonStyle(PressableButtonStyle())
+    }
+
     // MARK: - Now Playing
 
     private var nowPlayingView: some View {
@@ -90,7 +226,7 @@ struct AudiobooksView: View {
                 artworkView
                     .frame(width: artworkSize, height: artworkSize)
                 VStack(alignment: .leading, spacing: 8) {
-                    if player.hasContent {
+                    if hasSelectedContent {
                         bookInfo
                     } else {
                         Text("No audiobook playing")
@@ -104,7 +240,7 @@ struct AudiobooksView: View {
                             Button("Open Library") { section = .library }
                                 .buttonStyle(.bordered)
                                 .tint(CarTheme.accent)
-                            if !absService.inProgress.isEmpty {
+                            if source == .audiobookshelf && !absService.inProgress.isEmpty {
                                 Button("Continue") { section = .library }
                                     .buttonStyle(.bordered)
                                     .tint(CarTheme.green)
@@ -115,7 +251,7 @@ struct AudiobooksView: View {
                     transportControls
                     speedControls
                     Group {
-                        if player.hasContent {
+                        if hasSelectedContent {
                             progressBar
                         } else {
                             Color.clear
@@ -154,7 +290,7 @@ struct AudiobooksView: View {
 
     private var artworkView: some View {
         Group {
-            if let img = player.artwork {
+            if hasSelectedContent, let img = player.artwork {
                 Image(uiImage: img)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
@@ -193,8 +329,8 @@ struct AudiobooksView: View {
         }
         .buttonStyle(.plain)
         .foregroundStyle(CarTheme.primaryText)
-        .disabled(!player.hasContent)
-        .opacity(player.hasContent ? 1 : 0.35)
+        .disabled(!hasSelectedContent)
+        .opacity(hasSelectedContent ? 1 : 0.35)
     }
 
     private var speedControls: some View {
@@ -213,7 +349,8 @@ struct AudiobooksView: View {
             }
         }
         .padding(.top, 2)
-        .opacity(player.hasContent ? 1 : 0.35)
+        .disabled(!hasSelectedContent)
+        .opacity(hasSelectedContent ? 1 : 0.35)
     }
 
     private var progressBar: some View {
@@ -238,6 +375,122 @@ struct AudiobooksView: View {
     }
 
     // MARK: - Library
+
+    private var localLibraryView: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("LOCAL LIBRARY")
+                            .font(CarTheme.rounded(12, .semibold))
+                            .foregroundStyle(CarTheme.secondaryText)
+                            .tracking(0.8)
+                        Text("Audio files are copied into AltPlay and stay available offline.")
+                            .font(CarTheme.rounded(14))
+                            .foregroundStyle(CarTheme.secondaryText)
+                    }
+                    Spacer()
+                    Button { showFileImporter = true } label: {
+                        Label(localLibrary.isImporting ? "Importing" : "Import", systemImage: "plus")
+                            .font(CarTheme.rounded(16, .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 18)
+                            .frame(minHeight: 44)
+                            .background(CarTheme.accent)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(localLibrary.isImporting || localLibrary.catalogError != nil)
+                    .opacity(localLibrary.isImporting ? 0.65 : 1)
+                }
+
+                if let error = importError ?? localLibrary.catalogError {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(CarTheme.rounded(14, .medium))
+                        .foregroundStyle(CarTheme.orange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(CarTheme.field)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+
+                if localLibrary.books.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "books.vertical")
+                            .font(.system(size: 38))
+                            .foregroundStyle(CarTheme.accent.opacity(0.7))
+                        Text("No local audiobooks")
+                            .font(CarTheme.rounded(20, .semibold))
+                            .foregroundStyle(CarTheme.primaryText)
+                        Text("Import M4B, MP3, M4A, or other audio files from Files.")
+                            .font(CarTheme.rounded(15))
+                            .foregroundStyle(CarTheme.secondaryText)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 34)
+                    .tileBackground()
+                } else {
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 150), spacing: 16)],
+                        spacing: 16
+                    ) {
+                        ForEach(localLibrary.books) { book in
+                            localBookTile(book)
+                        }
+                    }
+                }
+            }
+            .padding(24)
+        }
+    }
+
+    private func localBookTile(_ book: LocalAudiobook) -> some View {
+        VStack(spacing: 8) {
+            Button {
+                player.play(book)
+                section = .nowPlaying
+            } label: {
+                VStack(alignment: .leading, spacing: 8) {
+                    LocalAudiobookCover(book: book)
+                        .aspectRatio(1, contentMode: .fill)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    Text(book.title)
+                        .font(CarTheme.rounded(16, .semibold))
+                        .foregroundStyle(CarTheme.primaryText)
+                        .lineLimit(2)
+                    if !book.author.isEmpty {
+                        Text(book.author)
+                            .font(CarTheme.rounded(14))
+                            .foregroundStyle(CarTheme.secondaryText)
+                            .lineLimit(1)
+                    }
+                    if book.duration > 0, book.progress > 0 {
+                        ProgressView(value: min(1, book.progress / book.duration))
+                            .tint(CarTheme.accent)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(PressableButtonStyle())
+
+            Button(role: .destructive) {
+                player.stopLocalPlayback(ifPlaying: book)
+                do {
+                    try localLibrary.remove(book)
+                } catch {
+                    importError = "Could not remove \(book.title): \(error.localizedDescription)"
+                }
+            } label: {
+                Label("Remove", systemImage: "trash")
+                    .font(CarTheme.rounded(13, .semibold))
+                    .foregroundStyle(CarTheme.red)
+                    .frame(maxWidth: .infinity, minHeight: 34)
+                    .background(CarTheme.field)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+    }
 
     private var libraryView: some View {
         ScrollView {
@@ -423,6 +676,10 @@ struct AudiobooksView: View {
             ? String(format: "%d:%02d:%02d", h, m, s)
             : String(format: "%d:%02d", m, s)
     }
+
+    private var hasSelectedContent: Bool {
+        player.hasContent && player.source == source
+    }
 }
 
 // MARK: - Cover artwork
@@ -447,6 +704,26 @@ private struct ABSCoverView: View {
         }
         .task(id: itemID) {
             image = await AudiobookshelfService.shared.coverImage(for: itemID, width: 400)
+        }
+    }
+}
+
+private struct LocalAudiobookCover: View {
+    let book: LocalAudiobook
+
+    var body: some View {
+        Group {
+            if let image = LocalAudiobookLibrary.shared.artwork(for: book) {
+                Image(uiImage: image)
+                    .resizable()
+            } else {
+                ZStack {
+                    CarTheme.tile
+                    Image(systemName: "book.closed.fill")
+                        .font(.system(size: 34))
+                        .foregroundStyle(CarTheme.accent.opacity(0.4))
+                }
+            }
         }
     }
 }

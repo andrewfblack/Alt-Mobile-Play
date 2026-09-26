@@ -104,6 +104,11 @@
     <string>UIInterfaceOrientationLandscapeLeft</string>
     <string>UIInterfaceOrientationLandscapeRight</string>
   </array>
+  <key>UISupportedInterfaceOrientations~ipad</key>
+  <array>
+    <string>UIInterfaceOrientationLandscapeLeft</string>
+    <string>UIInterfaceOrientationLandscapeRight</string>
+  </array>
   <key>NSLocationWhenInUseUsageDescription</key>
   <string>AltPlay uses your location to show the map and provide driving guidance.</string>
   <key>NSAppleMusicUsageDescription</key>

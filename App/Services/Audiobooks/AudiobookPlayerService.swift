@@ -3,11 +3,20 @@ import MediaPlayer
 import Observation
 import UIKit
 
+enum AudiobookSource: String, Identifiable {
+    case audiobookshelf
+    case local
+
+    var id: String { rawValue }
+}
+
 @Observable
 final class AudiobookPlayerService {
     static let shared = AudiobookPlayerService()
 
     private(set) var currentBook: ABSLibraryItem?
+    private(set) var currentLocalBook: LocalAudiobook?
+    private(set) var source: AudiobookSource?
     private(set) var session: ABSPlaybackSession?
     private(set) var isPlaying = false
     private(set) var currentTime: Double = 0
@@ -16,6 +25,7 @@ final class AudiobookPlayerService {
     private(set) var artwork: UIImage?
 
     @ObservationIgnored private let absService = AudiobookshelfService.shared
+    @ObservationIgnored private let localLibrary = LocalAudiobookLibrary.shared
     @ObservationIgnored private var player = AVPlayer()
     @ObservationIgnored private var periodicObserver: Any?
     @ObservationIgnored private var endObserver: NSObjectProtocol?
@@ -23,14 +33,21 @@ final class AudiobookPlayerService {
     @ObservationIgnored private var tracks: [ABSAudioTrack] = []
     @ObservationIgnored private var activeTrackIndex = 0
     @ObservationIgnored private var commandTargets: [Any] = []
+    @ObservationIgnored private var playbackRequestID = UUID()
 
     let skipInterval: Double = 30
     let supportedSpeeds: [Float] = [0.75, 1.0, 1.25, 1.5, 2.0]
 
-    var hasContent: Bool { currentBook != nil }
-    var title: String { session?.displayTitle ?? currentBook?.media?.title ?? "" }
-    var author: String { session?.displayAuthor ?? currentBook?.media?.authorName ?? "" }
-    var series: String { currentBook?.media?.metadata?.seriesName ?? "" }
+    var hasContent: Bool { currentBook != nil || currentLocalBook != nil }
+    var title: String {
+        currentLocalBook?.title ?? session?.displayTitle ?? currentBook?.media?.title ?? ""
+    }
+    var author: String {
+        currentLocalBook?.author ?? session?.displayAuthor ?? currentBook?.media?.authorName ?? ""
+    }
+    var series: String {
+        source == .audiobookshelf ? currentBook?.media?.metadata?.seriesName ?? "" : "Local Audiobook"
+    }
 
     private init() {
         periodicObserver = player.addPeriodicTimeObserver(
@@ -54,16 +71,23 @@ final class AudiobookPlayerService {
     // MARK: - Playback
 
     func play(_ book: ABSLibraryItem, startAt startTime: Double? = nil) async {
+        let requestID = UUID()
+        playbackRequestID = requestID
         do {
             guard let liveBook = try? await absService.item(id: book.id) else { return }
             let sessionInfo = try await absService.startPlaybackSession(itemID: liveBook.id)
+            guard playbackRequestID == requestID else { return }
             let loadedTracks = (sessionInfo.audioTracks ?? [])
                 .sorted { ($0.startOffset ?? 0) < ($1.startOffset ?? 0) }
             guard !loadedTracks.isEmpty else { return }
 
+            syncProgress()
             currentBook = liveBook
+            currentLocalBook = nil
+            source = .audiobookshelf
             session = sessionInfo
             tracks = loadedTracks
+            artwork = nil
             duration = sessionInfo.duration ?? book.media?.duration ?? 0
             speed = 1.0
             activeTrackIndex = Self.trackIndex(at: startTime ?? 0, tracks: loadedTracks)
@@ -80,6 +104,41 @@ final class AudiobookPlayerService {
         } catch {
             absService.lastError = error.localizedDescription
         }
+    }
+
+    func play(_ book: LocalAudiobook) {
+        let url = localLibrary.fileURL(for: book)
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+
+        playbackRequestID = UUID()
+        syncProgress()
+        currentBook = nil
+        currentLocalBook = book
+        source = .local
+        session = nil
+        tracks = []
+        activeTrackIndex = 0
+        duration = book.duration
+        currentTime = book.duration > 0 && book.progress >= book.duration - 1
+            ? 0
+            : min(book.progress, book.duration)
+        speed = 1.0
+        artwork = localLibrary.artwork(for: book)
+
+        activateAudioSession()
+        isPlaying = true
+        player.replaceCurrentItem(with: AVPlayerItem(url: url))
+        if currentTime > 0 {
+            player.seek(
+                to: CMTime(seconds: currentTime, preferredTimescale: 600),
+                toleranceBefore: .zero,
+                toleranceAfter: .zero
+            )
+        }
+        player.play()
+        player.rate = speed
+        startProgressTimer()
+        updateNowPlaying()
     }
 
     func playPause() {
@@ -101,16 +160,28 @@ final class AudiobookPlayerService {
 
     func resume() {
         guard hasContent, !isPlaying else { return }
+        if source == .local, duration > 0, currentTime >= duration - 1 {
+            seek(to: 0)
+        }
         activateAudioSession()
         player.play()
         player.rate = speed
         isPlaying = true
+        startProgressTimer()
         updateNowPlaying()
     }
 
     func seek(to time: Double) {
         guard hasContent else { return }
         let clamped = max(0, min(time, duration))
+        if source == .local {
+            player.seek(to: CMTime(seconds: clamped, preferredTimescale: 600),
+                        toleranceBefore: .zero, toleranceAfter: .zero)
+            currentTime = clamped
+            updateNowPlaying()
+            syncProgress()
+            return
+        }
         let index = Self.trackIndex(at: clamped, tracks: tracks)
         let trackStart = Self.start(for: index, tracks: tracks)
         if index != activeTrackIndex {
@@ -139,6 +210,21 @@ final class AudiobookPlayerService {
         updateNowPlaying()
     }
 
+    func stopLocalPlayback(ifPlaying book: LocalAudiobook) {
+        guard currentLocalBook?.id == book.id else { return }
+        playbackRequestID = UUID()
+        player.pause()
+        player.replaceCurrentItem(with: nil)
+        stopProgressTimer()
+        currentLocalBook = nil
+        source = nil
+        isPlaying = false
+        currentTime = 0
+        duration = 0
+        artwork = nil
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+    }
+
     // MARK: - Track sequencing
 
     private func loadTrack(_ index: Int, startTime: Double) {
@@ -162,6 +248,10 @@ final class AudiobookPlayerService {
 
     private func handleTrackEnd() {
         guard hasContent else { return }
+        if source == .local {
+            finishBook()
+            return
+        }
         let next = activeTrackIndex + 1
         if next < tracks.count {
             loadTrack(next, startTime: 0)
@@ -209,13 +299,29 @@ final class AudiobookPlayerService {
         guard hasContent else { return }
         let playbackTime = player.currentTime().seconds
         guard playbackTime.isFinite else { return }
-        currentTime = Self.start(for: activeTrackIndex, tracks: tracks) + playbackTime
+        if source == .local {
+            currentTime = playbackTime
+            let itemDuration = player.currentItem?.duration.seconds ?? 0
+            if itemDuration.isFinite, itemDuration > 0 {
+                duration = itemDuration
+            }
+        } else {
+            currentTime = Self.start(for: activeTrackIndex, tracks: tracks) + playbackTime
+        }
         updateNowPlaying(light: true)
     }
 
     func refreshArtwork() async {
+        if let localBook = currentLocalBook {
+            artwork = localLibrary.artwork(for: localBook)
+            updateNowPlaying()
+            return
+        }
         guard let book = currentBook else { return }
-        artwork = await absService.coverImage(for: book.id, width: 600)
+        let bookID = book.id
+        let image = await absService.coverImage(for: bookID, width: 600)
+        guard source == .audiobookshelf, currentBook?.id == bookID else { return }
+        artwork = image
         updateNowPlaying()
     }
 
@@ -236,9 +342,25 @@ final class AudiobookPlayerService {
     }
 
     private func syncProgress() {
+        if let localBook = currentLocalBook {
+            let bookID = localBook.id
+            let savedTime = currentTime
+            let savedDuration = duration
+            Task { @MainActor in
+                localLibrary.updateProgress(for: bookID, time: savedTime, duration: savedDuration)
+            }
+            return
+        }
         guard let book = currentBook else { return }
+        let itemID = book.id
+        let savedTime = currentTime
+        let savedDuration = duration
         Task {
-            await absService.saveProgress(itemID: book.id, currentTime: currentTime, duration: duration)
+            await absService.saveProgress(
+                itemID: itemID,
+                currentTime: savedTime,
+                duration: savedDuration
+            )
         }
     }
 

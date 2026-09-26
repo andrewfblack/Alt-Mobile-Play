@@ -11,6 +11,16 @@ final class AppSettings {
     var voiceGuidance: Bool {
         didSet { UserDefaults.standard.set(voiceGuidance, forKey: "voiceGuidance") }
     }
+    var automaticRerouting: Bool {
+        didSet { UserDefaults.standard.set(automaticRerouting, forKey: "automaticRerouting") }
+    }
+    var wazeTrafficEnabled: Bool {
+        didSet { UserDefaults.standard.set(wazeTrafficEnabled, forKey: "wazeTrafficEnabled") }
+    }
+    private(set) var wazeAPIKey: String
+    var wazeCountry: String {
+        didSet { UserDefaults.standard.set(wazeCountry, forKey: "wazeCountry") }
+    }
 
     var homeApps: [HomeApp] {
         didSet { saveHomeApps() }
@@ -39,6 +49,10 @@ final class AppSettings {
     private init() {
         keepAwake = UserDefaults.standard.object(forKey: "keepAwake") as? Bool ?? true
         voiceGuidance = UserDefaults.standard.object(forKey: "voiceGuidance") as? Bool ?? true
+        automaticRerouting = UserDefaults.standard.object(forKey: "automaticRerouting") as? Bool ?? true
+        wazeTrafficEnabled = UserDefaults.standard.object(forKey: "wazeTrafficEnabled") as? Bool ?? false
+        wazeAPIKey = KeychainStore.string(for: "wazeAPIKey") ?? ""
+        wazeCountry = UserDefaults.standard.string(forKey: "wazeCountry") ?? "usa"
         if let data = UserDefaults.standard.data(forKey: Self.homeAppsKey),
            let decoded = try? JSONDecoder().decode([HomeApp].self, from: data) {
             homeApps = decoded
@@ -108,6 +122,11 @@ final class AppSettings {
         } else {
             homeWidgets[index] = kind
         }
+    }
+
+    func setWazeAPIKey(_ value: String) {
+        guard KeychainStore.set(value, for: "wazeAPIKey") else { return }
+        wazeAPIKey = value
     }
 
     func apply() {

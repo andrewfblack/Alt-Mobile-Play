@@ -1,9 +1,12 @@
 import SwiftUI
 import MapKit
 
+@MainActor
 struct NavigationView: View {
     @Environment(AppRouter.self) private var router
     @State private var nav = NavigationState.shared
+    @State private var settings = AppSettings.shared
+    @State private var traffic = WazeTrafficService.shared
     @State private var position: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var searchText = ""
     @State private var results: [MKMapItem] = []
@@ -21,6 +24,12 @@ struct NavigationView: View {
             map
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 .padding(12)
+
+            if nav.isNavigating && traffic.isConfigured {
+                trafficStatus
+                    .padding(.top, nav.isNavigating ? 16 : 78)
+                    .padding(.leading, barWidth + 16)
+            }
 
             if !nav.isNavigating {
                 searchBar
@@ -69,6 +78,17 @@ struct NavigationView: View {
                 position = .userLocation(followsHeading: false, fallback: .automatic)
             }
         }
+        .task(id: trafficTaskID) {
+            guard nav.isNavigating, traffic.isConfigured, let route = nav.route else {
+                traffic.clear()
+                return
+            }
+            while !Task.isCancelled {
+                await traffic.loadTraffic(for: route)
+                guard traffic.canAutomaticallyRefresh else { break }
+                try? await Task.sleep(nanoseconds: 300_000_000_000)
+            }
+        }
         }
     }
 
@@ -106,6 +126,26 @@ struct NavigationView: View {
                         lineWidth: 6, lineCap: .round, lineJoin: .round
                     ))
             }
+
+            ForEach(traffic.jams.filter { $0.line.count > 1 }) { jam in
+                MapPolyline(coordinates: jam.line.map(\.coordinate))
+                    .stroke(trafficJamColor(jam.level), style: StrokeStyle(
+                        lineWidth: 8, lineCap: .round, lineJoin: .round
+                    ))
+            }
+
+            ForEach(traffic.alerts) { alert in
+                Annotation(alert.type.capitalized, coordinate: alert.location.coordinate) {
+                    Image(systemName: trafficAlertIcon(alert.type))
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 30, height: 30)
+                        .background(Circle().fill(trafficAlertColor(alert.type)))
+                        .overlay(Circle().strokeBorder(.white.opacity(0.8), lineWidth: 2))
+                        .shadow(color: .black.opacity(0.35), radius: 3, y: 2)
+                        .accessibilityLabel(trafficAlertLabel(alert))
+                }
+            }
         }
         .mapStyle(mapStyle)
     }
@@ -116,6 +156,77 @@ struct NavigationView: View {
         case .hybrid:    return .hybrid(elevation: .realistic)
         case .satellite: return .imagery(elevation: .realistic)
         }
+    }
+
+    private var trafficStatus: some View {
+        HStack(spacing: 8) {
+            if traffic.isLoading && traffic.lastUpdated == nil {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(CarTheme.primaryText)
+                Text("Loading WazeAPI traffic")
+            } else if let error = traffic.lastError {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(CarTheme.orange)
+                Text(error)
+                    .lineLimit(1)
+            } else {
+                Image(systemName: "car.side.fill")
+                    .foregroundStyle(CarTheme.accent)
+                Text(trafficStatusText)
+            }
+        }
+        .font(CarTheme.rounded(13, .semibold))
+        .foregroundStyle(CarTheme.primaryText)
+        .padding(.horizontal, 12)
+        .frame(height: 36)
+        .background(CarTheme.field.opacity(0.94))
+        .clipShape(Capsule())
+        .frame(maxWidth: 420, alignment: .leading)
+    }
+
+    private var trafficTaskID: String {
+        let target = nav.target?.id.uuidString ?? "none"
+        let routeIdentity = nav.route.map { ObjectIdentifier($0).hashValue } ?? 0
+        return "\(target)-\(routeIdentity)-\(nav.isNavigating)-\(settings.wazeTrafficEnabled)-\(settings.wazeAPIKey.hashValue)-\(settings.wazeCountry)"
+    }
+
+    private var trafficStatusText: String {
+        var text = "WazeAPI: \(traffic.alerts.count) alerts, \(traffic.jams.count) jams"
+        if let remaining = traffic.quotaRemaining {
+            text += " - \(remaining) requests left"
+        }
+        return text
+    }
+
+    private func trafficJamColor(_ level: Int) -> Color {
+        switch level {
+        case 4...: CarTheme.red
+        case 3: CarTheme.orange
+        default: CarTheme.orange.opacity(0.75)
+        }
+    }
+
+    private func trafficAlertIcon(_ type: String) -> String {
+        switch type.uppercased() {
+        case "POLICE": "shield.fill"
+        case "ACCIDENT": "car.2.fill"
+        case "HAZARD": "exclamationmark.triangle.fill"
+        case "ROAD_CLOSED", "CLOSURE": "nosign"
+        default: "exclamationmark.circle.fill"
+        }
+    }
+
+    private func trafficAlertColor(_ type: String) -> Color {
+        switch type.uppercased() {
+        case "POLICE": CarTheme.accent
+        case "ACCIDENT", "ROAD_CLOSED", "CLOSURE": CarTheme.red
+        default: CarTheme.orange
+        }
+    }
+
+    private func trafficAlertLabel(_ alert: WazeTrafficAlert) -> String {
+        [alert.type.capitalized, alert.street].compactMap { $0 }.joined(separator: " on ")
     }
 
     // MARK: - Search
@@ -264,11 +375,17 @@ struct NavigationView: View {
     private var turnBanner: some View {
         HStack(spacing: 18) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(nav.nextInstruction)
-                    .font(CarTheme.rounded(24, .semibold))
-                    .foregroundStyle(CarTheme.primaryText)
-                    .lineLimit(2)
-                if !nav.upcomingInstruction.isEmpty {
+                HStack(spacing: 10) {
+                    if nav.isRerouting {
+                        ProgressView()
+                            .tint(CarTheme.primaryText)
+                    }
+                    Text(nav.isRerouting ? "Finding a new route..." : nav.nextInstruction)
+                        .font(CarTheme.rounded(24, .semibold))
+                        .foregroundStyle(CarTheme.primaryText)
+                        .lineLimit(2)
+                }
+                if !nav.isRerouting && !nav.upcomingInstruction.isEmpty {
                     Text("Then: \(nav.upcomingInstruction)")
                         .font(CarTheme.rounded(16))
                         .foregroundStyle(CarTheme.secondaryText)

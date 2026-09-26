@@ -5,13 +5,16 @@ struct HomeScreenView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let slotWidth = (geo.size.width - 16) / 2
+            let contentWidth = min(geo.size.width, 1100)
+            let contentHeight = min(geo.size.height, 680)
+            let slotWidth = (contentWidth - 16) / 2
             HStack(spacing: 16) {
                 widgetSlot(0)
-                    .frame(width: slotWidth, height: geo.size.height)
+                    .frame(width: slotWidth, height: contentHeight)
                 widgetSlot(1)
-                    .frame(width: slotWidth, height: geo.size.height)
+                    .frame(width: slotWidth, height: contentHeight)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(16)
         .onAppear { settings.apply() }

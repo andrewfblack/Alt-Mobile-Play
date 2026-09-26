@@ -60,6 +60,8 @@ struct ContactsView: View {
                 }
             }
         }
+        .frame(maxWidth: 960)
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 24)
         .onAppear {
             Task {

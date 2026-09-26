@@ -2,6 +2,7 @@ import SwiftUI
 
 struct QuickMessagesView: View {
     @Environment(AppRouter.self) private var router
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var contacts = ContactsService.shared
     @State private var selectedContact: ContactRow?
     @State private var showSent = false
@@ -57,7 +58,7 @@ struct QuickMessagesView: View {
 
             // Message grid
             ScrollView {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
+                LazyVGrid(columns: messageColumns, spacing: 14) {
                     ForEach(QuickMessageCatalog.all) { msg in
                         Button {
                             send(msg)
@@ -83,11 +84,20 @@ struct QuickMessagesView: View {
                 .padding(24)
             }
         }
+        .frame(maxWidth: 1100)
+        .frame(maxWidth: .infinity)
         .onAppear {
             if selectedContact == nil, !contacts.contacts.isEmpty {
                 selectedContact = contacts.contacts.first
             }
         }
+    }
+
+    private var messageColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(), spacing: 14),
+            count: horizontalSizeClass == .regular ? 3 : 2
+        )
     }
 
     private var sentConfirmation: some View {

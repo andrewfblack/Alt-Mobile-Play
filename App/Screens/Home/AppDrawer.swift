@@ -2,13 +2,14 @@ import SwiftUI
 
 struct AppDrawerView: View {
     @Environment(AppRouter.self) private var router
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var settings = AppSettings.shared
     @State private var page = 0
 
-    private let columns = 3
     private let rows = 2
     private let spacing: CGFloat = 14
 
+    private var columns: Int { horizontalSizeClass == .regular ? 4 : 3 }
     private var perPage: Int { columns * rows }
 
     private var pages: [[HomeApp]] {
@@ -29,7 +30,8 @@ struct AppDrawerView: View {
             let availH = geo.size.height - topPad - titleHeight - dotsHeight - controlsGap
             let tileByWidth = (geo.size.width - outer * 2 - spacing * CGFloat(columns - 1)) / CGFloat(columns)
             let tileByHeight = (availH - spacing * CGFloat(rows - 1)) / CGFloat(rows)
-            let tile = max(64, min(tileByWidth, tileByHeight))
+            let tile = max(64, min(220, tileByWidth, tileByHeight))
+            let gridWidth = tile * CGFloat(columns) + spacing * CGFloat(columns - 1)
             let gridHeight = tile * CGFloat(rows) + spacing * CGFloat(rows - 1)
 
             VStack(spacing: 0) {
@@ -42,6 +44,7 @@ struct AppDrawerView: View {
                     TabView(selection: $page) {
                         ForEach(pages.indices, id: \.self) { index in
                             grid(pages[index], tile: tile)
+                                .frame(width: gridWidth)
                                 .frame(maxHeight: .infinity, alignment: .top)
                                 .tag(index)
                         }

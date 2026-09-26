@@ -31,9 +31,17 @@ final class NavigationState: NSObject, CLLocationManagerDelegate {
     var routingError = false
     var currentCoordinate: CLLocationCoordinate2D?
     var travelHeading: CLLocationDirection = 0
+    var isRerouting = false
 
     @ObservationIgnored private let locationManager = CLLocationManager()
     @ObservationIgnored private let synthesizer = AVSpeechSynthesizer()
+    @ObservationIgnored private let settings = AppSettings.shared
+    @ObservationIgnored private var lastProcessedLocationAt: Date?
+    @ObservationIgnored private var offRouteFixCount = 0
+    @ObservationIgnored private var lastOffRouteFixAt: Date?
+    @ObservationIgnored private var lastRerouteAt: Date?
+    @ObservationIgnored private var routeRequestID = UUID()
+    @ObservationIgnored private var activeRerouteID: UUID?
 
     var destinationTitle: String { target?.title ?? "Destination" }
 
@@ -74,32 +82,65 @@ final class NavigationState: NSObject, CLLocationManagerDelegate {
         isNavigating = false
         currentStep = 0
         routingError = false
+        isRerouting = false
+        offRouteFixCount = 0
+        lastOffRouteFixAt = nil
+        routeRequestID = UUID()
+        activeRerouteID = nil
     }
 
+    @MainActor
     func calculateRoute() async {
-        guard let target else { return }
-        routingError = false
+        _ = await calculateRoute(from: nil, isReroute: false)
+    }
+
+    @discardableResult
+    @MainActor
+    private func calculateRoute(
+        from coordinate: CLLocationCoordinate2D?,
+        isReroute: Bool
+    ) async -> Bool {
+        guard let target else { return false }
+        let requestID = UUID()
+        routeRequestID = requestID
+        if !isReroute { routingError = false }
         let request = MKDirections.Request()
-        request.source = MKMapItem.forCurrentLocation()
+        if let coordinate {
+            request.source = MKMapItem(placemark: MKPlacemark(coordinate: coordinate))
+        } else {
+            request.source = MKMapItem.forCurrentLocation()
+        }
         request.destination = target.mapItem
         request.transportType = .automobile
         request.requestsAlternateRoutes = false
         do {
             let response = try await MKDirections(request: request).calculate()
+            guard routeRequestID == requestID else { return false }
+            if isReroute {
+                guard settings.automaticRerouting, isNavigating, isRerouting else { return false }
+            }
             if let r = response.routes.first {
                 self.route = r
+                currentStep = 0
+                routingError = false
+                return true
             } else {
-                routingError = true
+                if !isReroute { routingError = true }
             }
         } catch {
-            routingError = true
+            guard routeRequestID == requestID else { return false }
+            if !isReroute { routingError = true }
         }
+        return false
     }
 
     func startNavigation() {
         guard let route else { return }
         isNavigating = true
         currentStep = 0
+        offRouteFixCount = 0
+        lastOffRouteFixAt = nil
+        lastRerouteAt = nil
         locationManager.startUpdatingLocation()
         speak(route.steps.first?.instructions)
     }
@@ -108,6 +149,11 @@ final class NavigationState: NSObject, CLLocationManagerDelegate {
         isNavigating = false
         route = nil
         currentStep = 0
+        isRerouting = false
+        offRouteFixCount = 0
+        lastOffRouteFixAt = nil
+        routeRequestID = UUID()
+        activeRerouteID = nil
         synthesizer.stopSpeaking(at: .immediate)
         locationManager.stopUpdatingLocation()
     }
@@ -133,15 +179,23 @@ final class NavigationState: NSObject, CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         Task { @MainActor in
             guard let loc = locations.last else { return }
+            if let lastProcessedLocationAt,
+               loc.timestamp <= lastProcessedLocationAt { return }
+            lastProcessedLocationAt = loc.timestamp
             currentCoordinate = loc.coordinate
             if loc.course >= 0 {
                 travelHeading = loc.course
             }
 
-            guard isNavigating, let route, currentStep < route.steps.count else { return }
-            let end = stepEndpoint(route.steps[currentStep])
-            let dist = loc.distance(from: CLLocation(latitude: end.latitude, longitude: end.longitude))
-            if dist < 50 { advance() }
+            guard isNavigating, let route else { return }
+
+            evaluateRerouting(for: loc, route: route)
+
+            if currentStep < route.steps.count {
+                let end = stepEndpoint(route.steps[currentStep])
+                let dist = loc.distance(from: CLLocation(latitude: end.latitude, longitude: end.longitude))
+                if dist < 50 { advance() }
+            }
         }
     }
 
@@ -163,6 +217,83 @@ final class NavigationState: NSObject, CLLocationManagerDelegate {
             isNavigating = false
             locationManager.stopUpdatingLocation()
         }
+    }
+
+    private func evaluateRerouting(for location: CLLocation, route: MKRoute) {
+        guard settings.automaticRerouting, !isRerouting else {
+            offRouteFixCount = 0
+            lastOffRouteFixAt = nil
+            return
+        }
+        guard location.horizontalAccuracy >= 0, location.horizontalAccuracy <= 65,
+              abs(location.timestamp.timeIntervalSinceNow) < 10,
+              location.speed >= 1 else {
+            offRouteFixCount = 0
+            lastOffRouteFixAt = nil
+            return
+        }
+
+        if let target,
+           location.distance(from: CLLocation(
+               latitude: target.coordinate.latitude,
+               longitude: target.coordinate.longitude
+            )) < 60 {
+            offRouteFixCount = 0
+            lastOffRouteFixAt = nil
+            return
+        }
+
+        let corridor = max(45, location.horizontalAccuracy * 2)
+        let remainingSteps = route.steps.dropFirst(min(currentStep, route.steps.count))
+        let routeDistance = remainingSteps
+            .map { $0.polyline.distance(to: location.coordinate) }
+            .min() ?? route.polyline.distance(to: location.coordinate)
+        if routeDistance > corridor {
+            if let lastOffRouteFixAt {
+                let interval = location.timestamp.timeIntervalSince(lastOffRouteFixAt)
+                guard interval > 0 else { return }
+                if interval > 8 { offRouteFixCount = 0 }
+            }
+            offRouteFixCount += 1
+            lastOffRouteFixAt = location.timestamp
+        } else {
+            offRouteFixCount = 0
+            lastOffRouteFixAt = nil
+        }
+
+        guard offRouteFixCount >= 3 else { return }
+        if let lastRerouteAt, Date().timeIntervalSince(lastRerouteAt) < 30 { return }
+
+        offRouteFixCount = 0
+        lastOffRouteFixAt = nil
+        lastRerouteAt = Date()
+        isRerouting = true
+        let rerouteID = UUID()
+        activeRerouteID = rerouteID
+        let coordinate = location.coordinate
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let updated = await calculateRoute(from: coordinate, isReroute: true)
+            guard activeRerouteID == rerouteID else { return }
+            activeRerouteID = nil
+            isRerouting = false
+            if updated {
+                let instruction = nextInstruction
+                speak(instruction.isEmpty ? "Route updated" : "Route updated. \(instruction)")
+            }
+        }
+    }
+
+    @MainActor
+    func setAutomaticRerouting(_ enabled: Bool) {
+        guard !enabled else { return }
+        if isRerouting {
+            routeRequestID = UUID()
+            activeRerouteID = nil
+            isRerouting = false
+        }
+        offRouteFixCount = 0
+        lastOffRouteFixAt = nil
     }
 
     private func speak(_ text: String?) {
@@ -189,5 +320,35 @@ extension MKPolyline {
         let pts = points()
         for i in 0..<pointCount { coords.append(pts[i].coordinate) }
         return coords
+    }
+
+    func distance(to coordinate: CLLocationCoordinate2D) -> CLLocationDistance {
+        guard pointCount > 0 else { return .infinity }
+        let target = MKMapPoint(coordinate)
+        let points = points()
+        if pointCount == 1 {
+            return target.distance(to: points[0])
+        }
+
+        var minimumMapPoints = Double.infinity
+        for index in 0..<(pointCount - 1) {
+            let start = points[index]
+            let end = points[index + 1]
+            let dx = end.x - start.x
+            let dy = end.y - start.y
+            let lengthSquared = dx * dx + dy * dy
+            let fraction: Double
+            if lengthSquared == 0 {
+                fraction = 0
+            } else {
+                fraction = max(0, min(1,
+                    ((target.x - start.x) * dx + (target.y - start.y) * dy) / lengthSquared
+                ))
+            }
+            let nearestX = start.x + fraction * dx
+            let nearestY = start.y + fraction * dy
+            minimumMapPoints = min(minimumMapPoints, hypot(target.x - nearestX, target.y - nearestY))
+        }
+        return minimumMapPoints * MKMetersPerMapPointAtLatitude(coordinate.latitude)
     }
 }

@@ -5,7 +5,7 @@ struct RootView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let barWidth = max(80, geo.size.width * 0.10)
+            let barWidth = min(96, max(80, geo.size.width * 0.10))
             ZStack(alignment: .leading) {
                 CarTheme.background
                     .ignoresSafeArea()

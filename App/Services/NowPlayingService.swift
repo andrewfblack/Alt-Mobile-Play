@@ -2,11 +2,16 @@ import MediaPlayer
 import Observation
 
 @Observable
+@MainActor
 final class NowPlayingService {
     static let shared = NowPlayingService()
 
     var authStatus: MPMediaLibraryAuthorizationStatus = .notDetermined
-    var nowItem: MPMediaItem?
+    private(set) var hasContent = false
+    private(set) var artwork: UIImage?
+    private(set) var title = "No Apple Music track selected"
+    private(set) var artist = ""
+    private(set) var album = ""
     var isPlaying = false
     var currentTime: Double = 0
     var duration: Double = 0
@@ -14,14 +19,9 @@ final class NowPlayingService {
     var albums: [MPMediaItemCollection] = []
     var playlists: [MPMediaPlaylist] = []
 
-    var hasContent: Bool { nowItem != nil }
-    var artwork: UIImage? { nowItem?.artwork?.image(at: CGSize(width: 300, height: 300)) }
-    var title: String { nowItem?.title ?? "No Apple Music track selected" }
-    var artist: String { nowItem?.artist ?? "" }
-    var album: String { nowItem?.albumTitle ?? "" }
-
     @ObservationIgnored private let player = MPMusicPlayerController.systemMusicPlayer
     @ObservationIgnored private var timer: Timer?
+    @ObservationIgnored private var syncScheduled = false
 
     private init() {
         authStatus = MPMediaLibrary.authorizationStatus()
@@ -31,21 +31,24 @@ final class NowPlayingService {
             forName: .MPMusicPlayerControllerNowPlayingItemDidChange,
             object: player,
             queue: .main
-        ) { [weak self] _ in self?.syncNow() }
+        ) { [weak self] _ in
+            Task { @MainActor in self?.scheduleNowSync() }
+        }
 
         NotificationCenter.default.addObserver(
             forName: .MPMusicPlayerControllerPlaybackStateDidChange,
             object: player,
             queue: .main
-        ) { [weak self] _ in self?.syncState() }
+        ) { [weak self] _ in
+            Task { @MainActor in self?.syncState() }
+        }
 
-        syncNow()
+        scheduleNowSync()
         syncState()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.syncNow()
-            self?.syncState()
+            Task { @MainActor in self?.syncPlaybackState() }
         }
-        RunLoop.main.add(timer!, forMode: .common)
+        if let timer { RunLoop.main.add(timer, forMode: .common) }
     }
 
     func requestAccess() async {
@@ -95,10 +98,42 @@ final class NowPlayingService {
     func previous() { if hasContent { player.skipToPreviousItem() } }
     func seek(_ t: Double) { if hasContent { player.currentPlaybackTime = t } }
 
+    private func scheduleNowSync() {
+        guard !syncScheduled else { return }
+        syncScheduled = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            syncScheduled = false
+            syncNow()
+            syncState()
+        }
+    }
+
     private func syncNow() {
-        nowItem = player.nowPlayingItem
-        duration = nowItem?.playbackDuration ?? 0
+        guard let item = player.nowPlayingItem else {
+            hasContent = false
+            artwork = nil
+            title = "No Apple Music track selected"
+            artist = ""
+            album = ""
+            duration = 0
+            currentTime = 0
+            return
+        }
+
+        let itemArtwork = item.artwork?.image(at: CGSize(width: 300, height: 300))
+        hasContent = true
+        artwork = itemArtwork
+        title = item.title ?? "Unknown Track"
+        artist = item.artist ?? ""
+        album = item.albumTitle ?? ""
+        duration = item.playbackDuration
         currentTime = player.currentPlaybackTime
+    }
+
+    private func syncPlaybackState() {
+        if hasContent { currentTime = player.currentPlaybackTime }
+        syncState()
     }
 
     private func syncState() {

@@ -34,13 +34,10 @@ platform :ios do
       is_key_content_base64: true
     )
 
-    # The Live Activity widget extension needs its own bundle id and profile.
-    # produce doesn't support API-key auth, so register it via the Connect API.
+    # Both bundle IDs are already registered. Avoid querying the bundle-ID API
+    # on every upload because Apple can block that endpoint while agreements
+    # propagate even when signing and TestFlight access remain available.
     widget_app_id = "#{ENV['APP_ID']}.widgets"
-    if Spaceship::ConnectAPI::BundleId.find(widget_app_id).nil?
-      Spaceship::ConnectAPI::BundleId.create(name: "AltPlay Widgets", identifier: widget_app_id, platform: "IOS")
-      UI.message("Registered widget App ID #{widget_app_id}")
-    end
 
     match(
       type: "appstore",
